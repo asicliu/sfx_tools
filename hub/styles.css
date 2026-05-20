@@ -1,0 +1,162 @@
+:root {
+  color: #17181d;
+  background: #eef1f5;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+.shell {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 48px 0;
+}
+
+.masthead {
+  display: flex;
+  min-height: 220px;
+  align-items: flex-end;
+  padding: 34px;
+  border: 1px solid #dce2ea;
+  border-radius: 8px;
+  background:
+    linear-gradient(120deg, rgba(15, 118, 110, 0.13), rgba(37, 99, 235, 0.1)),
+    #ffffff;
+  box-shadow: 0 14px 36px rgba(32, 41, 56, 0.08);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(40px, 6vw, 72px);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.summary {
+  max-width: 620px;
+  margin: 18px 0 0;
+  color: #526071;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.tool-card {
+  display: grid;
+  grid-template-columns: 58px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  min-height: 150px;
+  padding: 22px;
+  border: 1px solid #dce2ea;
+  border-radius: 8px;
+  color: inherit;
+  background: #ffffff;
+  text-decoration: none;
+  box-shadow: 0 14px 36px rgba(32, 41, 56, 0.08);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.tool-card:hover {
+  transform: translateY(-2px);
+  border-color: #9aa9bb;
+  box-shadow: 0 18px 42px rgba(32, 41, 56, 0.12);
+}
+
+.tool-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #17202a;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.tool-content {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.tool-title {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.tool-description {
+  color: #526071;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tool-action {
+  padding: 9px 14px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #2563eb;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+@media (max-width: 780px) {
+  .shell {
+    width: min(100% - 28px, 1120px);
+    padding: 24px 0;
+  }
+
+  .masthead {
+    min-height: 190px;
+    padding: 24px;
+  }
+
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-card {
+    grid-template-columns: 48px 1fr;
+  }
+
+  .tool-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .tool-action {
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+}

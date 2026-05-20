@@ -1,0 +1,16 @@
+{
+  "name": "sfx-tools-hub",
+  "version": "1.0.0",
+  "description": "Static hub for SFX utilities.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-hub.mjs",
+    "smoke": "npm --prefix tools/markdown-to-pdf run smoke && npm --prefix tools/pdf-watermark-js run smoke",
+    "check": "npm run build && npm run smoke"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
