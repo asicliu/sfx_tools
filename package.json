@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-hub.mjs",
-    "smoke": "npm --prefix tools/markdown-to-pdf run smoke && npm --prefix tools/pdf-watermark-js run smoke",
+    "smoke": "npm --prefix tools/jsx-renderer run smoke && npm --prefix tools/markdown-to-pdf run smoke && npm --prefix tools/pdf-watermark-js run smoke",
     "check": "npm run build && npm run smoke"
   },
   "engines": {

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSX Renderer</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-labelledby="app-title">
+        <form class="editor-panel" id="render-form" autocomplete="off">
+          <header class="toolbar">
+            <div>
+              <h1 id="app-title">JSX Renderer</h1>
+              <p id="file-summary">Untitled component</p>
+            </div>
+            <div class="actions">
+              <button class="secondary-action" id="export-button" type="button">Export HTML</button>
+              <button class="primary-action" type="submit">Render</button>
+            </div>
+          </header>
+
+          <label class="file-target" id="drop-zone">
+            <input id="jsx-file" type="file" accept=".jsx,.tsx,.js,.ts,text/javascript,text/plain" />
+            <span class="file-target-title">Choose JSX</span>
+            <span class="file-target-meta" id="drop-label">or drop it here</span>
+          </label>
+
+          <div class="settings-grid">
+            <div class="field">
+              <label for="html-title">HTML title</label>
+              <input id="html-title" type="text" value="Rendered JSX" />
+            </div>
+            <div class="field">
+              <label for="html-filename">Export filename</label>
+              <input id="html-filename" type="text" value="rendered-jsx.html" />
+            </div>
+          </div>
+
+          <div class="field editor-field">
+            <label for="jsx-input">JSX</label>
+            <textarea id="jsx-input" spellcheck="false"></textarea>
+          </div>
+
+          <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
+        </form>
+
+        <aside class="preview-panel" aria-label="Preview">
+          <iframe id="preview-frame" title="Rendered JSX preview"></iframe>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -8,6 +8,11 @@ const dist = path.join(root, "dist");
 
 const tools = [
   {
+    name: "JSX Renderer",
+    slug: "jsx-renderer",
+    cwd: path.join(root, "tools", "jsx-renderer"),
+  },
+  {
     name: "Markdown to PDF",
     slug: "markdown-to-pdf",
     cwd: path.join(root, "tools", "markdown-to-pdf"),
