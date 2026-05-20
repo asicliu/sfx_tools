@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# ── PDF Watermark JS launcher ────────────────────────────────────
+# All dependencies (pdf-lib) are pre-bundled — only Node.js is needed.
+
+RESOURCES_DIR="$(dirname "$(dirname "$0")")/Resources"
+
+# ── Build a rich PATH so we find Node.js ─────────────────────────
+# .app bundles launch with a minimal environment (no ~/.zshrc),
+# so manually add common Node locations.
+
+# nvm
+if [ -d "$HOME/.nvm" ]; then
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" 2>/dev/null
+fi
+
+# fnm
+if [ -d "$HOME/.local/share/fnm" ]; then
+    eval "$(~/.local/share/fnm/fnm env 2>/dev/null)" || true
+fi
+
+# volta
+[ -d "$HOME/.volta/bin" ] && export PATH="$HOME/.volta/bin:$PATH"
+
+# Homebrew (Apple Silicon & Intel)
+for p in /opt/homebrew/bin /usr/local/bin; do
+    [ -d "$p" ] && export PATH="$p:$PATH"
+done
+
+# nodejs.org pkg installer
+for p in /usr/local/lib/node_modules/.bin /usr/local/nodejs/bin; do
+    [ -d "$p" ] && export PATH="$p:$PATH"
+done
+
+# ── Locate Node.js ───────────────────────────────────────────────
+
+NODE="$(command -v node 2>/dev/null)"
+
+if [ -z "$NODE" ]; then
+    osascript -e 'display dialog "Node.js is required but was not found.\n\nInstall it from https://nodejs.org or via Homebrew:\n  brew install node" with title "PDF Watermark" buttons {"OK"} default button "OK" with icon stop'
+    exit 1
+fi
+
+# ── Launch ───────────────────────────────────────────────────────
+
+exec "$NODE" "$RESOURCES_DIR/pdfwatermark_web.js"
