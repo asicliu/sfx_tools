@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown to PDF</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-labelledby="app-title">
+        <form class="editor-panel" id="pdf-form" autocomplete="off">
+          <header class="toolbar">
+            <div>
+              <h1 id="app-title">Markdown to PDF</h1>
+              <p id="file-summary">Untitled document</p>
+            </div>
+            <button class="primary-action" id="export-button" type="submit">Export PDF</button>
+          </header>
+
+          <label class="file-target" id="drop-zone">
+            <input id="markdown-file" type="file" accept=".md,.markdown,text/markdown,text/plain" />
+            <span class="file-target-title">Choose Markdown</span>
+            <span class="file-target-meta" id="drop-label">or drop it here</span>
+          </label>
+
+          <div class="field">
+            <label for="filename">PDF filename</label>
+            <input id="filename" type="text" value="document.pdf" />
+          </div>
+
+          <div class="settings-grid">
+            <div class="field">
+              <label for="page-size">Page size</label>
+              <select id="page-size">
+                <option value="letter">Letter</option>
+                <option value="a4">A4</option>
+                <option value="legal">Legal</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="body-size">Body size</label>
+              <input id="body-size" type="number" value="11" min="8" max="18" step="0.5" />
+            </div>
+            <div class="field">
+              <label for="margin-size">Margins</label>
+              <input id="margin-size" type="number" value="0.75" min="0.25" max="2" step="0.05" />
+            </div>
+          </div>
+
+          <div class="field editor-field">
+            <label for="markdown-input">Markdown</label>
+            <textarea id="markdown-input" spellcheck="false"></textarea>
+          </div>
+
+          <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
+        </form>
+
+        <aside class="preview-panel" aria-label="Preview">
+          <article class="preview-document" id="preview"></article>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
