@@ -70,6 +70,38 @@
             </div>
           </div>
 
+          <section class="security-panel" aria-labelledby="security-title">
+            <div class="section-heading">
+              <label class="checkbox-label" for="protect-permissions">
+                <input id="protect-permissions" type="checkbox" checked />
+                <span id="security-title">Protect permissions</span>
+              </label>
+            </div>
+
+            <div class="password-row">
+              <div class="field">
+                <label for="permission-password">Permissions password</label>
+                <input id="permission-password" type="text" autocomplete="off" />
+              </div>
+              <button class="secondary-action" id="generate-password" type="button">Generate</button>
+            </div>
+
+            <div class="permission-grid">
+              <label class="checkbox-label" for="allow-print">
+                <input id="allow-print" type="checkbox" />
+                <span>Allow print</span>
+              </label>
+              <label class="checkbox-label" for="allow-copy">
+                <input id="allow-copy" type="checkbox" />
+                <span>Allow copy</span>
+              </label>
+              <label class="checkbox-label" for="allow-annotate">
+                <input id="allow-annotate" type="checkbox" />
+                <span>Allow annotate/forms</span>
+              </label>
+            </div>
+          </section>
+
           <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
         </form>
 

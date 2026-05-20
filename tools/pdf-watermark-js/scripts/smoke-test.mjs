@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { applyWatermark } from "../src/watermark.js";
+import { computePermissions, encryptPdfPermissions } from "../src/encryption.js";
 
 const source = await PDFDocument.create();
 const page = source.addPage([612, 792]);
@@ -32,4 +33,29 @@ if (loaded.getPageCount() !== 1 || output.length === 0) {
   throw new Error("Watermark smoke test failed.");
 }
 
-console.log(`Smoke test passed: ${output.length} bytes`);
+const encrypted = encryptPdfPermissions(output, {
+  ownerPassword: "smoke-owner-password",
+  allowPrint: false,
+  allowCopy: false,
+  allowAnnotate: false,
+  fileId: new Uint8Array(16).fill(1),
+});
+const encryptedText = Buffer.from(encrypted).toString("binary");
+const expectedPermissions = String(
+  computePermissions({ allowPrint: false, allowCopy: false, allowAnnotate: false }),
+);
+
+if (
+  !encryptedText.includes("/Encrypt") ||
+  !encryptedText.includes("/Standard") ||
+  encryptedText.match(/\/P\s+(-?\d+)/)?.[1] !== expectedPermissions
+) {
+  throw new Error("Permission encryption smoke test failed.");
+}
+
+const encryptedLoaded = await PDFDocument.load(encrypted, { ignoreEncryption: true });
+if (encryptedLoaded.getPageCount() !== 1) {
+  throw new Error("Encrypted PDF smoke test failed.");
+}
+
+console.log(`Smoke test passed: ${output.length} watermarked bytes, ${encrypted.length} encrypted bytes`);

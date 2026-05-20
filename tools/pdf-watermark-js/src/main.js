@@ -1,4 +1,5 @@
 import { applyWatermark } from "./watermark.js";
+import { encryptPdfPermissions, generatePermissionPassword } from "./encryption.js";
 import "./styles.css";
 
 const controls = {
@@ -17,6 +18,12 @@ const controls = {
   spacingPanel: document.querySelector("#spacing-controls"),
   spacingX: document.querySelector("#spacing-x"),
   spacingY: document.querySelector("#spacing-y"),
+  protectPermissions: document.querySelector("#protect-permissions"),
+  permissionPassword: document.querySelector("#permission-password"),
+  generatePassword: document.querySelector("#generate-password"),
+  allowPrint: document.querySelector("#allow-print"),
+  allowCopy: document.querySelector("#allow-copy"),
+  allowAnnotate: document.querySelector("#allow-annotate"),
   status: document.querySelector("#status-line"),
   button: document.querySelector("#download-button"),
   canvas: document.querySelector("#preview-canvas"),
@@ -45,6 +52,11 @@ function getOptions() {
     repeat: controls.repeat.checked,
     spacingX: clamp(controls.spacingX.value, 10, 2000, 250),
     spacingY: clamp(controls.spacingY.value, 10, 2000, 200),
+    protectPermissions: controls.protectPermissions.checked,
+    permissionPassword: controls.permissionPassword.value.trim(),
+    allowPrint: controls.allowPrint.checked,
+    allowCopy: controls.allowCopy.checked,
+    allowAnnotate: controls.allowAnnotate.checked,
   };
 }
 
@@ -154,9 +166,30 @@ async function handleSubmit(event) {
 
   try {
     const inputBytes = await state.file.arrayBuffer();
-    const outputBytes = await applyWatermark(inputBytes, getOptions());
+    const options = getOptions();
+    let outputBytes = await applyWatermark(inputBytes, options);
+
+    if (options.protectPermissions) {
+      if (!options.permissionPassword) {
+        options.permissionPassword = generatePermissionPassword();
+        controls.permissionPassword.value = options.permissionPassword;
+      }
+
+      outputBytes = encryptPdfPermissions(outputBytes, {
+        ownerPassword: options.permissionPassword,
+        allowPrint: options.allowPrint,
+        allowCopy: options.allowCopy,
+        allowAnnotate: options.allowAnnotate,
+      });
+    }
+
     downloadPdf(outputBytes, state.file.name);
-    setStatus("Watermarked PDF downloaded.", "success");
+    setStatus(
+      options.protectPermissions
+        ? "Watermarked PDF downloaded with protected permissions."
+        : "Watermarked PDF downloaded.",
+      "success",
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not process PDF.";
     setStatus(message, "error");
@@ -166,6 +199,8 @@ async function handleSubmit(event) {
 }
 
 function initialize() {
+  controls.permissionPassword.value = generatePermissionPassword();
+
   controls.fileInput.addEventListener("change", () => {
     const [file] = controls.fileInput.files;
     if (file) setFile(file);
@@ -188,13 +223,22 @@ function initialize() {
   });
 
   controls.form.addEventListener("submit", handleSubmit);
+  controls.generatePassword.addEventListener("click", () => {
+    controls.permissionPassword.value = generatePermissionPassword();
+  });
 
   const syncPreviewControls = () => {
     const repeat = controls.repeat.checked;
+    const protectPermissions = controls.protectPermissions.checked;
     controls.colorValue.textContent = controls.color.value;
     controls.spacingPanel.classList.toggle("is-disabled", !repeat);
     controls.spacingX.disabled = !repeat;
     controls.spacingY.disabled = !repeat;
+    controls.permissionPassword.disabled = !protectPermissions;
+    controls.generatePassword.disabled = !protectPermissions;
+    controls.allowPrint.disabled = !protectPermissions;
+    controls.allowCopy.disabled = !protectPermissions;
+    controls.allowAnnotate.disabled = !protectPermissions;
     updatePreview();
   };
 
@@ -207,6 +251,11 @@ function initialize() {
     controls.repeat,
     controls.spacingX,
     controls.spacingY,
+    controls.protectPermissions,
+    controls.permissionPassword,
+    controls.allowPrint,
+    controls.allowCopy,
+    controls.allowAnnotate,
   ].forEach((control) => {
     control.addEventListener("input", syncPreviewControls);
   });

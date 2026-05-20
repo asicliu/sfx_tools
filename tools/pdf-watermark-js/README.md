@@ -2,7 +2,13 @@
 
 Client-side browser app for adding text watermarks to PDF files. PDF processing happens in the browser with `pdf-lib`; there is no upload endpoint or server-side PDF processing.
 
-The Cloudflare-hosted version supports PDF input. Word and PowerPoint conversion and owner-password PDF permissions were removed because those depended on local macOS and Node.js APIs.
+The Cloudflare-hosted version supports PDF input. Word and PowerPoint conversion is not supported because it depends on local macOS and Microsoft Office APIs.
+
+## Permissions
+
+Permission protection is enabled by default. A random permissions password is generated when the app opens, and print/copy permissions are disabled unless you explicitly allow them before export.
+
+The password is an owner/permissions password: it locks the PDF permission settings while still allowing the document to open without an open password. PDF permission enforcement can vary by PDF viewer.
 
 ## Requirements
 
