@@ -1,41 +1,65 @@
 # PDF Watermark JS
 
-Local browser-based utility for adding text watermarks to PDF files. It runs a temporary server on `127.0.0.1`, opens the browser, and shuts down when the browser page closes.
+Client-side browser app for adding text watermarks to PDF files. PDF processing happens in the browser with `pdf-lib`; there is no upload endpoint or server-side PDF processing.
 
-The tool can also accept `.doc`, `.docx`, `.ppt`, and `.pptx` files on macOS when Microsoft Word or PowerPoint is installed locally, then output a watermarked PDF.
+The Cloudflare-hosted version supports PDF input. Word and PowerPoint conversion and owner-password PDF permissions were removed because those depended on local macOS and Node.js APIs.
 
 ## Requirements
 
-- Node.js 16 or newer
+- Node.js 18 or newer
 - npm
-- Optional for Office conversion on macOS: Microsoft Word and Microsoft PowerPoint
 
-## Run From Source
+## Local Development
 
 ```sh
 npm install
 npm start
 ```
 
-You can also run it directly:
+Then open the local URL printed by Vite.
+
+## Production Build
 
 ```sh
-node pdfwatermark_web.js
+npm run build
+npm run preview
 ```
 
-or from the repository root:
+The static output is written to `dist/`.
+
+## Cloudflare Workers Setup
+
+This project includes `wrangler.jsonc` for Cloudflare Workers Static Assets. The Worker name is set to `tools`; if you use a different Cloudflare project name, update the `name` field in `wrangler.jsonc` to match.
+
+Recommended setup:
+
+- Project name: `tools`
+- Root directory: `tools/pdf-watermark-js`
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+- Production branch: `main`
+- Non-production branch builds: optional
+
+If Cloudflare does not show a root directory field and you configure it from the repository root, use:
 
 ```sh
-tools/pdf-watermark-js/bin/pdf-watermark-js
+cd tools/pdf-watermark-js && npm ci && npm run build
 ```
 
-## Build The macOS App
+as the build command, and:
 
 ```sh
-npm install
-npm run build:macos-app
+cd tools/pdf-watermark-js && npx wrangler deploy
 ```
 
-The generated app is written to `tools/pdf-watermark-js/dist/PDF Watermark JS.app`.
+as the deploy command.
 
-If `node_modules` exists when you build the app, dependencies are bundled into the app. Otherwise, the app will install `pdf-lib` on first run.
+## Cloudflare Pages Setup
+
+If you choose Pages instead of Workers:
+
+- Framework preset: none
+- Root directory: `tools/pdf-watermark-js`
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Production branch: `main`
