@@ -108,7 +108,7 @@ function downloadPdf(bytes, sourceName) {
   const baseName = sourceName.replace(/\.(pdf|pptx|docx)$/i, "");
 
   link.href = url;
-  link.download = `${baseName}_watermarked.pdf`;
+  link.download = `${baseName}_wm.pdf`;
   document.body.append(link);
   link.click();
   link.remove();
