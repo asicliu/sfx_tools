@@ -1,7 +1,12 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { applyWatermark } from "../src/watermark.js";
 import { computePermissions, encryptPdfPermissions } from "../src/encryption.js";
-import { countSlideIds, parseSlideSizePoints } from "../src/convert/slide-size.js";
+import {
+  contentTypesForSingleSlide,
+  countSlideIds,
+  parseSlideOrder,
+  parseSlideSizePoints,
+} from "../src/convert/manifest.js";
 
 const slideIdXml =
   '<p:presentation xmlns:p="ns"><p:sldIdLst><p:sldId id="256" r:id="rId2"/>' +
@@ -9,6 +14,36 @@ const slideIdXml =
 
 if (countSlideIds(slideIdXml) !== 3 || countSlideIds("<p:presentation/>") !== 0) {
   throw new Error("Slide count smoke test failed.");
+}
+
+const relsXml =
+  '<Relationships><Relationship Id="rId2" Type="t" Target="slides/slide2.xml"/>' +
+  '<Relationship Id="rId3" Type="t" Target="slides/slide1.xml"/>' +
+  '<Relationship Id="rId4" Type="t" Target="slides/slide3.xml"/></Relationships>';
+const order = parseSlideOrder(slideIdXml, relsXml);
+
+if (order.join() !== "ppt/slides/slide2.xml,ppt/slides/slide1.xml,ppt/slides/slide3.xml") {
+  throw new Error("Slide order smoke test failed.");
+}
+
+if (parseSlideOrder(slideIdXml, "<Relationships/>").length !== 0) {
+  throw new Error("Slide order smoke test failed for missing relationships.");
+}
+
+const slideType =
+  "application/vnd.openxmlformats-officedocument.presentationml.slide+xml";
+const contentTypesXml =
+  `<Types><Override PartName="/ppt/presentation.xml" ContentType="p"/>` +
+  `<Override PartName="/ppt/slides/slide1.xml" ContentType="${slideType}"/>` +
+  `<Override PartName="/ppt/slides/slide2.xml" ContentType="${slideType}"/></Types>`;
+const singleSlide = contentTypesForSingleSlide(contentTypesXml, "ppt/slides/slide2.xml");
+
+if (
+  singleSlide.includes("slide1.xml") ||
+  !singleSlide.includes("slide2.xml") ||
+  !singleSlide.includes("/ppt/presentation.xml")
+) {
+  throw new Error("Single-slide content types smoke test failed.");
 }
 
 const widescreen = parseSlideSizePoints(
