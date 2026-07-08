@@ -1,5 +1,15 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { applyWatermark } from "../src/watermark.js";
+import { applyWatermark, needsRasterText } from "../src/watermark.js";
+
+if (
+  needsRasterText("CONFIDENTIAL") ||
+  needsRasterText("Café Draft") ||
+  !needsRasterText("机密") ||
+  !needsRasterText("社外秘") ||
+  !needsRasterText("DRAFT — 机密")
+) {
+  throw new Error("Raster text detection smoke test failed.");
+}
 import { computePermissions, encryptPdfPermissions } from "../src/encryption.js";
 import {
   contentTypesForSingleSlide,

@@ -46,6 +46,7 @@ function getOptions() {
     fontSize: clamp(controls.fontSize.value, 6, 200, 36),
     opacity: clamp(controls.opacity.value, 0, 1, 0.1),
     rotation: clamp(controls.rotation.value, -180, 180, 45),
+    colorHex: color,
     colorR: Number.parseInt(color.slice(1, 3), 16) / 255,
     colorG: Number.parseInt(color.slice(3, 5), 16) / 255,
     colorB: Number.parseInt(color.slice(5, 7), 16) / 255,
@@ -182,7 +183,10 @@ async function handleSubmit(event) {
         "neutral",
       );
       const { convertOfficeToPdf } = await import("./convert/index.js");
-      const conversion = await convertOfficeToPdf(inputBytes, kind);
+      const unitLabel = kind === "pptx" ? "slide" : "page";
+      const conversion = await convertOfficeToPdf(inputBytes, kind, (current, total) => {
+        setStatus(`Converting ${unitLabel} ${current} of ${total}...`, "neutral");
+      });
       inputBytes = conversion.bytes;
       conversionWarnings = conversion.warnings;
       setStatus("Processing PDF...", "neutral");

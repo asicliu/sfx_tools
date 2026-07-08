@@ -9,7 +9,11 @@ PowerPoint and Word files are converted to PDF in the browser before watermarkin
 - **PowerPoint (`.pptx`)** — slides are rendered with `pptx-preview` and each PDF page uses the exact slide dimensions from the presentation (like PowerPoint's own PDF export), so widescreen decks produce 13.33in x 7.5in pages instead of being fit onto printer paper.
 - **Word (`.docx`)** — pages are rendered with `docx-preview` using the page size declared in the document.
 
-Converted pages are rasterized (rendered as images), so text in converted output is not selectable. Rendering fidelity is good for typical text, shapes, tables, and images, but complex charts, SmartArt, or custom fonts may differ from Microsoft Office output. Legacy binary formats (`.ppt`, `.doc`) are not supported; re-save them as `.pptx`/`.docx` first.
+Conversion progress is reported per slide/page in the status line. Converted pages are rasterized (rendered as images), so text in converted output is not selectable. Rendering fidelity is good for typical text, shapes, tables, and images, but complex charts, SmartArt, or custom fonts may differ from Microsoft Office output. Legacy binary formats (`.ppt`, `.doc`) are not supported; re-save them as `.pptx`/`.docx` first.
+
+## Watermark Text
+
+Latin watermark text is drawn as vector text (Helvetica Bold). Text outside Latin-1 — Chinese, Japanese, Korean, emoji, typographic dashes — is rasterized at high resolution (~288 dpi) with system fonts and stamped as an image, so any script the browser can render works.
 
 ## Permissions
 

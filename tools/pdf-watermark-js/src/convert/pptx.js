@@ -151,13 +151,14 @@ async function renderSingleSlide(zip, contentTypesXml, partName, size) {
 // [Content_Types].xml, so a slide pptx-preview cannot parse only loses
 // itself instead of silently truncating every slide after it. Pages come
 // out in true sldIdLst order, unlike the library's filename ordering.
-async function convertSlideBySlide(zip, contentTypesXml, slideOrder, size) {
+async function convertSlideBySlide(zip, contentTypesXml, slideOrder, size, onProgress) {
   const pages = [];
   const warnings = [];
   const failedSlides = [];
 
   for (const [index, partName] of slideOrder.entries()) {
     const slideNumber = index + 1;
+    onProgress(slideNumber, slideOrder.length);
     let page = await renderSingleSlide(zip, contentTypesXml, partName, size);
 
     if (!page) {
@@ -206,7 +207,7 @@ async function convertSlideBySlide(zip, contentTypesXml, slideOrder, size) {
 
 // Mirrors PowerPoint's own PDF export: every PDF page uses the exact slide
 // dimensions from presentation.xml instead of being fit onto printer paper.
-export async function convertPptxToPdf(arrayBuffer) {
+export async function convertPptxToPdf(arrayBuffer, onProgress = () => {}) {
   let zip;
   try {
     zip = await JSZip.loadAsync(arrayBuffer);
@@ -241,7 +242,8 @@ export async function convertPptxToPdf(arrayBuffer) {
       filenameOrderMatches(slideOrder)
     ) {
       const pages = [];
-      for (const slide of slides) {
+      for (const [index, slide] of slides.entries()) {
+        onProgress(index + 1, slides.length);
         pages.push(await rasterizePage(slide, size.width, size.height));
       }
       return { bytes: await pagesToPdf(pages), warnings: [] };
@@ -258,5 +260,5 @@ export async function convertPptxToPdf(arrayBuffer) {
     );
   }
 
-  return convertSlideBySlide(zip, contentTypesXml, slideOrder, size);
+  return convertSlideBySlide(zip, contentTypesXml, slideOrder, size, onProgress);
 }

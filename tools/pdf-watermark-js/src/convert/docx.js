@@ -21,7 +21,7 @@ function pageSizePoints(section) {
   };
 }
 
-export async function convertDocxToPdf(arrayBuffer) {
+export async function convertDocxToPdf(arrayBuffer, onProgress = () => {}) {
   const host = createOffscreenHost();
 
   try {
@@ -41,7 +41,8 @@ export async function convertDocxToPdf(arrayBuffer) {
     }
 
     const pages = [];
-    for (const section of sections) {
+    for (const [index, section] of sections.entries()) {
+      onProgress(index + 1, sections.length);
       const size = pageSizePoints(section);
       pages.push(await rasterizePage(section, size.width, size.height));
     }
