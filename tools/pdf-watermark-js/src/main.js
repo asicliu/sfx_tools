@@ -174,6 +174,7 @@ async function handleSubmit(event) {
   try {
     let inputBytes = await state.file.arrayBuffer();
     const kind = fileKind(state.file);
+    let conversionWarnings = [];
 
     if (kind === "pptx" || kind === "docx") {
       setStatus(
@@ -181,7 +182,9 @@ async function handleSubmit(event) {
         "neutral",
       );
       const { convertOfficeToPdf } = await import("./convert/index.js");
-      inputBytes = await convertOfficeToPdf(inputBytes, kind);
+      const conversion = await convertOfficeToPdf(inputBytes, kind);
+      inputBytes = conversion.bytes;
+      conversionWarnings = conversion.warnings;
       setStatus("Processing PDF...", "neutral");
     }
 
@@ -203,12 +206,10 @@ async function handleSubmit(event) {
     }
 
     downloadPdf(outputBytes, state.file.name);
-    setStatus(
-      options.protectPermissions
-        ? "Watermarked PDF downloaded with protected permissions."
-        : "Watermarked PDF downloaded.",
-      "success",
-    );
+    const baseMessage = options.protectPermissions
+      ? "Watermarked PDF downloaded with protected permissions."
+      : "Watermarked PDF downloaded.";
+    setStatus([baseMessage, ...conversionWarnings].join(" "), "success");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not process PDF.";
     setStatus(message, "error");

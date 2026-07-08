@@ -46,7 +46,7 @@ export async function convertDocxToPdf(arrayBuffer) {
       pages.push(await rasterizePage(section, size.width, size.height));
     }
 
-    return pagesToPdf(pages);
+    return { bytes: await pagesToPdf(pages), warnings: [] };
   } finally {
     host.remove();
   }

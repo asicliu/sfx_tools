@@ -3,8 +3,12 @@ import { init } from "pptx-preview";
 import {
   contentTypesForSingleSlide,
   countSlideIds,
+  describeSlideContent,
+  findRelationshipTarget,
   parseSlideOrder,
   parseSlideSizePoints,
+  rewriteSvgBlips,
+  sanitizeSlideXml,
 } from "./manifest.js";
 import {
   createOffscreenHost,
@@ -14,6 +18,9 @@ import {
 } from "./rasterize.js";
 
 const CSS_PX_PER_POINT = 96 / 72;
+const SVG_RASTER_SCALE = 4;
+const SVG_FALLBACK_PX = 128;
+const SVG_MAX_PX = 2048;
 
 async function readZipText(zip, path) {
   try {
@@ -21,6 +28,82 @@ async function readZipText(zip, path) {
   } catch {
     return null;
   }
+}
+
+async function svgToPngBytes(svgText) {
+  const url = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml" }));
+  try {
+    const image = new Image();
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("Could not decode SVG image."));
+      image.src = url;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.min(SVG_MAX_PX, (image.naturalWidth || SVG_FALLBACK_PX) * SVG_RASTER_SCALE);
+    canvas.height = Math.min(SVG_MAX_PX, (image.naturalHeight || SVG_FALLBACK_PX) * SVG_RASTER_SCALE);
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (result) => (result ? resolve(result) : reject(new Error("Could not rasterize SVG."))),
+        "image/png",
+      );
+    });
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function resolveMediaPath(target) {
+  if (target.startsWith("/")) return target.slice(1);
+  return `ppt/${target.replace(/^(\.\.\/)+/, "")}`;
+}
+
+// pptx-preview fails on pictures whose only source is an asvg:svgBlip
+// extension (SVG-only, no raster fallback). Rasterize each such SVG to PNG
+// inside the zip and point the picture at it so the slide keeps its images.
+async function embedSvgFallbacks(zip) {
+  const slidePaths = Object.keys(zip.files).filter((name) =>
+    /^ppt\/slides\/slide\d+\.xml$/.test(name),
+  );
+  let changed = false;
+
+  for (const partName of slidePaths) {
+    const slideXml = await readZipText(zip, partName);
+    if (!slideXml || !slideXml.includes("asvg:svgBlip")) continue;
+
+    const { xml, svgRelIds } = rewriteSvgBlips(slideXml);
+    const relsPath = partName.replace("ppt/slides/", "ppt/slides/_rels/") + ".rels";
+    let relsXml = (await readZipText(zip, relsPath)) ?? "";
+
+    for (const relId of svgRelIds) {
+      const target = findRelationshipTarget(relsXml, relId);
+      if (!target || !target.toLowerCase().endsWith(".svg")) continue;
+
+      const mediaPath = resolveMediaPath(target);
+      const svgText = await readZipText(zip, mediaPath);
+      if (!svgText) continue;
+
+      const pngPath = `${mediaPath}.png`;
+      if (!zip.file(pngPath)) {
+        try {
+          zip.file(pngPath, await svgToPngBytes(svgText));
+        } catch {
+          continue;
+        }
+      }
+      relsXml = relsXml.replace(`Target="${target}"`, `Target="${target}.png"`);
+    }
+
+    zip.file(relsPath, relsXml);
+    zip.file(partName, xml);
+    changed = true;
+  }
+
+  return changed;
 }
 
 async function renderSlidesToHost(arrayBuffer, size) {
@@ -52,39 +135,73 @@ function filenameOrderMatches(slideOrder) {
   );
 }
 
+async function renderSingleSlide(zip, contentTypesXml, partName, size) {
+  zip.file("[Content_Types].xml", contentTypesForSingleSlide(contentTypesXml, partName));
+  const buffer = await zip.generateAsync({ type: "arraybuffer" });
+  const { host, slides } = await renderSlidesToHost(buffer, size);
+  try {
+    if (slides.length !== 1) return null;
+    return await rasterizePage(slides[0], size.width, size.height);
+  } finally {
+    host.remove();
+  }
+}
+
 // Converts one slide at a time by declaring only that slide in
 // [Content_Types].xml, so a slide pptx-preview cannot parse only loses
 // itself instead of silently truncating every slide after it. Pages come
 // out in true sldIdLst order, unlike the library's filename ordering.
 async function convertSlideBySlide(zip, contentTypesXml, slideOrder, size) {
   const pages = [];
+  const warnings = [];
   const failedSlides = [];
 
   for (const [index, partName] of slideOrder.entries()) {
-    zip.file("[Content_Types].xml", contentTypesForSingleSlide(contentTypesXml, partName));
-    const singleSlideBuffer = await zip.generateAsync({ type: "arraybuffer" });
-    const { host, slides } = await renderSlidesToHost(singleSlideBuffer, size);
+    const slideNumber = index + 1;
+    let page = await renderSingleSlide(zip, contentTypesXml, partName, size);
 
-    try {
-      if (slides.length === 1) {
-        pages.push(await rasterizePage(slides[0], size.width, size.height));
-      } else {
-        failedSlides.push(index + 1);
+    if (!page) {
+      const originalXml = await readZipText(zip, partName);
+      const { xml: sanitizedXml, removed } = sanitizeSlideXml(originalXml ?? "");
+
+      if (originalXml && sanitizedXml !== originalXml) {
+        zip.file(partName, sanitizedXml);
+        page = await renderSingleSlide(zip, contentTypesXml, partName, size);
+        zip.file(partName, originalXml);
+        if (page) {
+          warnings.push(
+            `Slide ${slideNumber} was converted without unsupported content` +
+              `${removed.length > 0 ? ` (${removed.join(", ")})` : ""}.`,
+          );
+        }
       }
-    } finally {
-      host.remove();
+
+      if (!page) {
+        failedSlides.push({
+          number: slideNumber,
+          contents: describeSlideContent(originalXml ?? ""),
+        });
+        continue;
+      }
     }
+
+    pages.push(page);
   }
 
   if (failedSlides.length > 0) {
+    const details = failedSlides
+      .map(({ number, contents }) =>
+        contents.length > 0 ? `${number} (contains: ${contents.join(", ")})` : `${number}`,
+      )
+      .join("; ");
     throw new Error(
-      `Slide${failedSlides.length > 1 ? "s" : ""} ${failedSlides.join(", ")} could not be ` +
-        "converted in the browser. Remove or simplify that content, or export the deck " +
-        "to PDF in PowerPoint and watermark that PDF instead.",
+      `Slide${failedSlides.length > 1 ? "s" : ""} ${details} could not be converted in the ` +
+        "browser. Remove or simplify that content, or export the deck to PDF in PowerPoint " +
+        "and watermark that PDF instead.",
     );
   }
 
-  return pagesToPdf(pages);
+  return { bytes: await pagesToPdf(pages), warnings };
 }
 
 // Mirrors PowerPoint's own PDF export: every PDF page uses the exact slide
@@ -107,11 +224,16 @@ export async function convertPptxToPdf(arrayBuffer) {
   const slideOrder = parseSlideOrder(presentationXml, relsXml);
   const expectedSlides = slideOrder.length || countSlideIds(presentationXml);
 
+  let deckBuffer = arrayBuffer;
+  if (await embedSvgFallbacks(zip)) {
+    deckBuffer = await zip.generateAsync({ type: "arraybuffer" });
+  }
+
   // pptx-preview swallows per-slide parse errors (silently truncating the
   // deck), so its all-at-once output is only trustworthy when the slide
   // count and slide order can both be confirmed against the manifest.
-  const { host, slides } = await renderSlidesToHost(arrayBuffer, size);
-  let renderedCount = slides.length;
+  const { host, slides } = await renderSlidesToHost(deckBuffer, size);
+  const renderedCount = slides.length;
   try {
     if (
       slides.length === expectedSlides &&
@@ -122,7 +244,7 @@ export async function convertPptxToPdf(arrayBuffer) {
       for (const slide of slides) {
         pages.push(await rasterizePage(slide, size.width, size.height));
       }
-      return await pagesToPdf(pages);
+      return { bytes: await pagesToPdf(pages), warnings: [] };
     }
   } finally {
     host.remove();

@@ -4,9 +4,59 @@ import { computePermissions, encryptPdfPermissions } from "../src/encryption.js"
 import {
   contentTypesForSingleSlide,
   countSlideIds,
+  describeSlideContent,
+  findRelationshipTarget,
   parseSlideOrder,
   parseSlideSizePoints,
+  rewriteSvgBlips,
+  sanitizeSlideXml,
 } from "../src/convert/manifest.js";
+
+const svgSlideXml =
+  '<p:pic><p:blipFill><a:blip><a:extLst><a:ext uri="{96DAC541}">' +
+  '<asvg:svgBlip xmlns:asvg="ns" r:embed="rId2"/></a:ext></a:extLst></a:blip>' +
+  "</p:blipFill></p:pic>" +
+  '<p:pic><p:blipFill><a:blip r:embed="rId9"><a:extLst><a:ext uri="{96DAC541}">' +
+  '<asvg:svgBlip xmlns:asvg="ns" r:embed="rId3"/></a:ext></a:extLst></a:blip>' +
+  "</p:blipFill></p:pic>";
+const svgRewrite = rewriteSvgBlips(svgSlideXml);
+
+if (
+  svgRewrite.svgRelIds.join() !== "rId2" ||
+  !svgRewrite.xml.includes('<a:blip r:embed="rId2">') ||
+  !svgRewrite.xml.includes('<a:blip r:embed="rId9">') ||
+  svgRewrite.xml.includes("svgBlip")
+) {
+  throw new Error("SVG blip rewrite smoke test failed.");
+}
+
+const svgRelsXml =
+  '<Relationships><Relationship Target="../media/image6.svg" Id="rId2" Type="t"/></Relationships>';
+
+if (
+  findRelationshipTarget(svgRelsXml, "rId2") !== "../media/image6.svg" ||
+  findRelationshipTarget(svgRelsXml, "rId9") !== null
+) {
+  throw new Error("Relationship target smoke test failed.");
+}
+
+const sanitized = sanitizeSlideXml(
+  "<p:sld><mc:AlternateContent><mc:Choice>new</mc:Choice>" +
+    "<mc:Fallback xmlns='f'>old</mc:Fallback></mc:AlternateContent>" +
+    '<p:graphicFrame><a:graphicData uri="http://x/diagram"><dgm:relIds/></a:graphicData></p:graphicFrame>' +
+    "<p:timing>anim</p:timing></p:sld>",
+);
+
+if (
+  sanitized.xml !== "<p:sld>old</p:sld>" ||
+  sanitized.removed.join() !== "SmartArt diagram"
+) {
+  throw new Error("Slide sanitize smoke test failed.");
+}
+
+if (describeSlideContent(svgSlideXml).join() !== "SVG image,picture") {
+  throw new Error("Slide content description smoke test failed.");
+}
 
 const slideIdXml =
   '<p:presentation xmlns:p="ns"><p:sldIdLst><p:sldId id="256" r:id="rId2"/>' +
