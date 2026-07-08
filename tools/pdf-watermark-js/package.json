@@ -15,8 +15,12 @@
   },
   "dependencies": {
     "buffer": "^6.0.3",
+    "docx-preview": "^0.4.0",
+    "html-to-image": "^1.11.13",
+    "jszip": "^3.10.1",
     "pako": "^2.1.0",
     "pdf-lib": "1.17.1",
+    "pptx-preview": "^1.0.7",
     "spark-md5": "^3.0.2"
   },
   "devDependencies": {

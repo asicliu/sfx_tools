@@ -60,8 +60,13 @@ function getOptions() {
   };
 }
 
-function isPdf(file) {
-  return file && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"));
+function fileKind(file) {
+  if (!file) return null;
+  const name = file.name.toLowerCase();
+  if (file.type === "application/pdf" || name.endsWith(".pdf")) return "pdf";
+  if (name.endsWith(".pptx")) return "pptx";
+  if (name.endsWith(".docx")) return "docx";
+  return null;
 }
 
 function formatBytes(bytes) {
@@ -82,15 +87,17 @@ function setBusy(isBusy) {
 }
 
 function setFile(file) {
-  if (!isPdf(file)) {
-    setStatus("Select a PDF file.", "error");
+  const kind = fileKind(file);
+  if (!kind) {
+    setStatus("Select a PDF, PowerPoint (.pptx), or Word (.docx) file.", "error");
     return;
   }
 
   state.file = file;
   controls.dropZone.classList.add("has-file");
   controls.dropLabel.textContent = formatBytes(file.size);
-  controls.fileSummary.textContent = file.name;
+  controls.fileSummary.textContent =
+    kind === "pdf" ? file.name : `${file.name} (will convert to PDF)`;
   setStatus("");
 }
 
@@ -98,7 +105,7 @@ function downloadPdf(bytes, sourceName) {
   const blob = new Blob([bytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  const baseName = sourceName.replace(/\.pdf$/i, "");
+  const baseName = sourceName.replace(/\.(pdf|pptx|docx)$/i, "");
 
   link.href = url;
   link.download = `${baseName}_watermarked.pdf`;
@@ -157,7 +164,7 @@ async function handleSubmit(event) {
   event.preventDefault();
 
   if (!state.file) {
-    setStatus("Select a PDF file.", "error");
+    setStatus("Select a PDF, PowerPoint (.pptx), or Word (.docx) file.", "error");
     return;
   }
 
@@ -165,7 +172,19 @@ async function handleSubmit(event) {
   setStatus("Processing PDF...", "neutral");
 
   try {
-    const inputBytes = await state.file.arrayBuffer();
+    let inputBytes = await state.file.arrayBuffer();
+    const kind = fileKind(state.file);
+
+    if (kind === "pptx" || kind === "docx") {
+      setStatus(
+        kind === "pptx" ? "Converting PowerPoint to PDF..." : "Converting Word to PDF...",
+        "neutral",
+      );
+      const { convertOfficeToPdf } = await import("./convert/index.js");
+      inputBytes = await convertOfficeToPdf(inputBytes, kind);
+      setStatus("Processing PDF...", "neutral");
+    }
+
     const options = getOptions();
     let outputBytes = await applyWatermark(inputBytes, options);
 

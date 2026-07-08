@@ -1,8 +1,15 @@
 # PDF Watermark JS
 
-Client-side browser app for adding text watermarks to PDF files. PDF processing happens in the browser with `pdf-lib`; there is no upload endpoint or server-side PDF processing.
+Client-side browser app for adding text watermarks to PDF, PowerPoint (`.pptx`), and Word (`.docx`) files. All processing happens in the browser; there is no upload endpoint or server-side processing.
 
-The Cloudflare-hosted version supports PDF input. Word and PowerPoint conversion is not supported because it depends on local macOS and Microsoft Office APIs.
+## Office File Conversion
+
+PowerPoint and Word files are converted to PDF in the browser before watermarking:
+
+- **PowerPoint (`.pptx`)** — slides are rendered with `pptx-preview` and each PDF page uses the exact slide dimensions from the presentation (like PowerPoint's own PDF export), so widescreen decks produce 13.33in x 7.5in pages instead of being fit onto printer paper.
+- **Word (`.docx`)** — pages are rendered with `docx-preview` using the page size declared in the document.
+
+Converted pages are rasterized (rendered as images), so text in converted output is not selectable. Rendering fidelity is good for typical text, shapes, tables, and images, but complex charts, SmartArt, or custom fonts may differ from Microsoft Office output. Legacy binary formats (`.ppt`, `.doc`) are not supported; re-save them as `.pptx`/`.docx` first.
 
 ## Permissions
 

@@ -1,6 +1,20 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { applyWatermark } from "../src/watermark.js";
 import { computePermissions, encryptPdfPermissions } from "../src/encryption.js";
+import { parseSlideSizePoints } from "../src/convert/slide-size.js";
+
+const widescreen = parseSlideSizePoints(
+  '<p:presentation xmlns:p="ns"><p:sldSz cx="12192000" cy="6858000"/></p:presentation>',
+);
+const fallback = parseSlideSizePoints('<p:presentation xmlns:p="ns"></p:presentation>');
+
+if (widescreen.width !== 960 || widescreen.height !== 540) {
+  throw new Error("Slide size parsing smoke test failed for 16:9 slides.");
+}
+
+if (fallback.width !== 720 || fallback.height !== 540) {
+  throw new Error("Slide size parsing smoke test failed for the default size.");
+}
 
 const source = await PDFDocument.create();
 const page = source.addPage([612, 792]);
