@@ -44,7 +44,7 @@ function getOptions() {
   return {
     text: controls.text.value.trim() || "CONFIDENTIAL",
     fontSize: clamp(controls.fontSize.value, 6, 200, 36),
-    opacity: clamp(controls.opacity.value, 0, 1, 0.2),
+    opacity: clamp(controls.opacity.value, 0, 1, 0.1),
     rotation: clamp(controls.rotation.value, -180, 180, 45),
     colorR: Number.parseInt(color.slice(1, 3), 16) / 255,
     colorG: Number.parseInt(color.slice(3, 5), 16) / 255,
