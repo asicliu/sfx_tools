@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import { init } from "pptx-preview";
-import { parseSlideSizePoints } from "./slide-size.js";
+import { countSlideIds, parseSlideSizePoints } from "./slide-size.js";
 import {
   createOffscreenHost,
   pagesToPdf,
@@ -10,7 +10,7 @@ import {
 
 const CSS_PX_PER_POINT = 96 / 72;
 
-async function readSlideSizePoints(arrayBuffer) {
+async function readPresentationXml(arrayBuffer) {
   let presentationXml;
   try {
     const zip = await JSZip.loadAsync(arrayBuffer);
@@ -23,13 +23,15 @@ async function readSlideSizePoints(arrayBuffer) {
     throw new Error("Could not read this file as a PowerPoint (.pptx) presentation.");
   }
 
-  return parseSlideSizePoints(presentationXml);
+  return presentationXml;
 }
 
 // Mirrors PowerPoint's own PDF export: every PDF page uses the exact slide
 // dimensions from presentation.xml instead of being fit onto printer paper.
 export async function convertPptxToPdf(arrayBuffer) {
-  const size = await readSlideSizePoints(arrayBuffer);
+  const presentationXml = await readPresentationXml(arrayBuffer);
+  const size = parseSlideSizePoints(presentationXml);
+  const expectedSlides = countSlideIds(presentationXml);
   const host = createOffscreenHost();
 
   try {
@@ -44,6 +46,16 @@ export async function convertPptxToPdf(arrayBuffer) {
     const slides = [...host.querySelectorAll(".pptx-preview-slide-wrapper")];
     if (slides.length === 0) {
       throw new Error("No slides found in the presentation.");
+    }
+
+    // pptx-preview swallows per-slide parse errors and silently truncates
+    // its slide list, so never trust it against the deck's own manifest.
+    if (expectedSlides > 0 && slides.length !== expectedSlides) {
+      throw new Error(
+        `Converted only ${slides.length} of ${expectedSlides} slides — this presentation uses ` +
+          "content the in-browser converter cannot read. Export the deck to PDF in PowerPoint, " +
+          "then watermark that PDF instead.",
+      );
     }
 
     const pages = [];

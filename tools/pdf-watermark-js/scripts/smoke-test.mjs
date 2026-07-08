@@ -1,7 +1,15 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { applyWatermark } from "../src/watermark.js";
 import { computePermissions, encryptPdfPermissions } from "../src/encryption.js";
-import { parseSlideSizePoints } from "../src/convert/slide-size.js";
+import { countSlideIds, parseSlideSizePoints } from "../src/convert/slide-size.js";
+
+const slideIdXml =
+  '<p:presentation xmlns:p="ns"><p:sldIdLst><p:sldId id="256" r:id="rId2"/>' +
+  '<p:sldId id="257" r:id="rId3"/><p:sldId id="258" r:id="rId4"/></p:sldIdLst></p:presentation>';
+
+if (countSlideIds(slideIdXml) !== 3 || countSlideIds("<p:presentation/>") !== 0) {
+  throw new Error("Slide count smoke test failed.");
+}
 
 const widescreen = parseSlideSizePoints(
   '<p:presentation xmlns:p="ns"><p:sldSz cx="12192000" cy="6858000"/></p:presentation>',
