@@ -1,6 +1,7 @@
 import { renderAsync } from "docx-preview";
 import { toCanvas } from "html-to-image";
 import { PDFDocument } from "pdf-lib";
+import { convertWithBrowserOffice } from "./office-converter.js";
 
 const POINTS_PER_CSS_PX = 72 / 96;
 const RASTER_PIXEL_RATIO = 2;
@@ -148,6 +149,11 @@ export async function convertDocxToPdf(arrayBuffer, onProgress = () => {}) {
     if (wordConversion) return wordConversion;
   }
 
-  onProgress("Rendering Word document privately in this browser…");
-  return convertInBrowser(arrayBuffer, onProgress);
+  try {
+    return await convertWithBrowserOffice(arrayBuffer, onProgress);
+  } catch (officeError) {
+    console.warn("Browser Office conversion failed; trying compatibility renderer.", officeError);
+    onProgress("Trying the compatibility Word renderer…");
+    return convertInBrowser(arrayBuffer, onProgress);
+  }
 }

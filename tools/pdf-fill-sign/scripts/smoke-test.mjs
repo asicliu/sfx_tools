@@ -1,5 +1,32 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { access, readFile, readdir } from "node:fs/promises";
 import { applyAnnotations } from "../src/pdf-export.js";
+
+const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const distUrl = new URL("../dist/", import.meta.url);
+const headers = await readFile(new URL("_headers", distUrl), "utf8");
+if (
+  !headers.includes("Cross-Origin-Opener-Policy: same-origin") ||
+  !headers.includes("Cross-Origin-Embedder-Policy: require-corp")
+) {
+  throw new Error("Browser Office isolation headers are missing from the production build.");
+}
+
+await Promise.all([
+  access(new URL("vendor/zetajs/zetaHelper.js", distUrl)),
+  access(new URL("vendor/zetajs/zeta.js", distUrl)),
+  access(new URL("docx-conversion-thread.js", distUrl)),
+]);
+
+const assetFiles = await readdir(new URL("assets/", distUrl));
+const appBundles = await Promise.all(
+  assetFiles
+    .filter((name) => /^index-.*\.js$/.test(name))
+    .map((name) => readFile(new URL(`assets/${name}`, distUrl), "utf8")),
+);
+if (!appBundles.some((bundle) => bundle.includes(packageJson.version))) {
+  throw new Error("The package version is missing from the production app bundle.");
+}
 
 const source = await PDFDocument.create();
 const page = source.addPage([612, 792]);
@@ -72,4 +99,6 @@ if (loaded.getProducer() !== "SFX Tools PDF Fill & Sign") {
   throw new Error("PDF export metadata smoke test failed.");
 }
 
-console.log(`Smoke test passed: ${output.length} signed PDF bytes`);
+console.log(
+  `Smoke test passed: v${packageJson.version}, browser Office assets, and ${output.length} signed PDF bytes`,
+);

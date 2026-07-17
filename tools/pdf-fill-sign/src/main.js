@@ -20,6 +20,7 @@ const MAX_SIGNATURE_IMAGE_EDGE = 1600;
 
 const controls = {
   appHeader: document.querySelector(".app-header"),
+  appVersion: document.querySelector("#app-version"),
   fileInput: document.querySelector("#document-file"),
   dropZone: document.querySelector("#drop-zone"),
   replaceButton: document.querySelector("#replace-button"),
@@ -55,6 +56,10 @@ const controls = {
   previewViewport: document.querySelector("#preview-viewport"),
   pageWrap: document.querySelector("#page-wrap"),
 };
+
+controls.appVersion.textContent = `v${__APP_VERSION__}`;
+document.documentElement.dataset.appVersion = __APP_VERSION__;
+globalThis.__SFX_PDF_FILL_SIGN_VERSION__ = __APP_VERSION__;
 
 function syncStickyHeaderHeight() {
   const height = Math.ceil(controls.appHeader.getBoundingClientRect().height);
@@ -254,7 +259,9 @@ async function loadDocument(file) {
       converted
         ? conversion.conversionMode === "microsoft-word"
           ? "Word document converted with Microsoft Word. Scroll continuously through all pages."
-          : "Word document converted in this browser. Complex Office-only formatting may differ slightly."
+          : conversion.conversionMode === "browser-office"
+            ? "Word document converted privately with LibreOffice in this browser. Scroll continuously through all pages."
+            : "Word document converted with the compatibility renderer. Complex Office-only formatting may differ slightly."
         : "Document ready. Scroll continuously through all pages.",
       "success",
     );

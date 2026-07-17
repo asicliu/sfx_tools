@@ -12,7 +12,9 @@ Local tool for filling and signing PDF and DOCX files. Files stay on the device 
 - Finish editing with a single Done action, then download the PDF.
 - Download the finished document as a PDF.
 
-During local development on macOS, DOCX conversion uses Microsoft Word when available for maximum layout fidelity. In a hosted deployment, the app falls back to `docx-preview` and renders each declared Word page to PDF entirely in the browser. Typical text, tables, headers, footers, and images retain their page layout, though SmartArt, unavailable custom fonts, and other Office-only features can differ from Microsoft Word. Before rasterizing, the hosted converter compares Word's stored page count with the browser-rendered page count and stops with an instruction to upload a PDF if they differ.
+During local development on macOS, DOCX conversion uses Microsoft Word when available for maximum layout fidelity. Hosted deployments use LibreOffice compiled to WebAssembly through ZetaJS, so real pagination, tables, headers, footers, and images are converted to PDF without uploading the document. The browser downloads and caches the Office engine on the first DOCX conversion. If that engine is unavailable, `docx-preview` remains as a compatibility fallback and refuses to create a PDF when its page count differs from Word's stored page count.
+
+The visible version next to the app title comes from `package.json`. The same version is also exposed as `document.documentElement.dataset.appVersion` and `window.__SFX_PDF_FILL_SIGN_VERSION__` so local and deployed builds can be compared directly.
 
 ## Local development
 

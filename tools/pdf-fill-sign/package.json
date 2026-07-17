@@ -1,6 +1,6 @@
 {
   "name": "pdf-fill-sign",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Private browser-based PDF and DOCX filling and signing tool.",
   "license": "Apache-2.0",
   "private": true,
@@ -17,7 +17,8 @@
     "docx-preview": "^0.4.0",
     "html-to-image": "^1.11.13",
     "pdf-lib": "1.17.1",
-    "pdfjs-dist": "4.8.69"
+    "pdfjs-dist": "4.8.69",
+    "zetajs": "^1.2.0"
   },
   "devDependencies": {
     "vite": "^5.4.21"

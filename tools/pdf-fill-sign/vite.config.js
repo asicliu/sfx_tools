@@ -1,7 +1,9 @@
 import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { defineConfig } from "vite";
 
@@ -12,6 +14,28 @@ const WORD_TEMP_PREFIX = path.join(
   homedir(),
   "Library/Containers/com.microsoft.Word/Data/tmp/TemporaryItems/sfx-pdf-fill-sign-",
 );
+const PROJECT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+const APP_VERSION = JSON.parse(
+  readFileSync(path.join(PROJECT_DIRECTORY, "package.json"), "utf8"),
+).version;
+const CROSS_ORIGIN_HEADERS = {
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Embedder-Policy": "require-corp",
+};
+const ZETA_BROWSER_ASSETS = new Map([
+  [
+    "/vendor/zetajs/zetaHelper.js",
+    path.join(PROJECT_DIRECTORY, "node_modules/zetajs/source/zetaHelper.js"),
+  ],
+  [
+    "/vendor/zetajs/zeta.js",
+    path.join(PROJECT_DIRECTORY, "node_modules/zetajs/source/zeta.js"),
+  ],
+  [
+    "/docx-conversion-thread.js",
+    path.join(PROJECT_DIRECTORY, "src/docx-conversion-thread.js"),
+  ],
+]);
 
 let conversionQueue = Promise.resolve();
 
@@ -137,6 +161,55 @@ function localWordConversion() {
   };
 }
 
+function zetaBrowserAssets() {
+  return {
+    name: "zeta-browser-assets",
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        for (const [header, value] of Object.entries(CROSS_ORIGIN_HEADERS)) {
+          response.setHeader(header, value);
+        }
+        next();
+      });
+      server.middlewares.use(async (request, response, next) => {
+        const pathname = new URL(request.url || "/", "http://localhost").pathname;
+        const sourcePath = ZETA_BROWSER_ASSETS.get(pathname);
+        if (!sourcePath) {
+          next();
+          return;
+        }
+
+        try {
+          response.statusCode = 200;
+          response.setHeader("Content-Type", "text/javascript; charset=utf-8");
+          response.setHeader("Cache-Control", "no-store");
+          response.end(await readFile(sourcePath));
+        } catch (error) {
+          next(error);
+        }
+      });
+    },
+    async generateBundle() {
+      for (const [requestPath, sourcePath] of ZETA_BROWSER_ASSETS) {
+        this.emitFile({
+          type: "asset",
+          fileName: requestPath.slice(1),
+          source: await readFile(sourcePath),
+        });
+      }
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [localWordConversion()],
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
+  server: {
+    headers: CROSS_ORIGIN_HEADERS,
+  },
+  preview: {
+    headers: CROSS_ORIGIN_HEADERS,
+  },
+  plugins: [zetaBrowserAssets(), localWordConversion()],
 });
