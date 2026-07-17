@@ -22,6 +22,11 @@ const tools = [
     slug: "pdf-watermark-js",
     cwd: path.join(root, "tools", "pdf-watermark-js"),
   },
+  {
+    name: "PDF Fill & Sign",
+    slug: "pdf-fill-sign",
+    cwd: path.join(root, "tools", "pdf-fill-sign"),
+  },
 ];
 
 function run(command, args, cwd) {

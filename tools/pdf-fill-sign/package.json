@@ -1,0 +1,26 @@
+{
+  "name": "pdf-fill-sign",
+  "version": "1.0.0",
+  "description": "Private browser-based PDF and DOCX filling and signing tool.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "start": "npm run dev",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "smoke": "node scripts/smoke-test.mjs",
+    "check": "npm run build && npm run smoke"
+  },
+  "dependencies": {
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "4.8.69"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Fill and sign PDF or DOCX files locally in your browser."
+    />
+    <title>PDF Fill &amp; Sign</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div class="brand-block">
+          <a class="back-link" href="/" aria-label="Back to SFX Tools">SFX Tools</a>
+          <div>
+            <h1>PDF Fill &amp; Sign</h1>
+            <p>Place text and your handwritten signature, then export a finished PDF.</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <span class="privacy-badge">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 1.5 17 4v5.1c0 4.3-2.8 7.7-7 9.4-4.2-1.7-7-5.1-7-9.4V4l7-2.5Zm0 3.1A2.4 2.4 0 0 0 7.6 7v1H7v5h6V8h-.6V7A2.4 2.4 0 0 0 10 4.6Zm0 1.2c.7 0 1.2.5 1.2 1.2v1H8.8V7c0-.7.5-1.2 1.2-1.2Z" />
+            </svg>
+            Files stay on this device
+          </span>
+          <button class="primary-action" id="export-button" type="button" disabled>
+            Download signed PDF
+          </button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="control-panel" aria-label="Document controls">
+          <section class="panel-section document-section" aria-labelledby="document-title">
+            <div class="section-heading-row">
+              <div>
+                <h2 id="document-title">Choose a document</h2>
+              </div>
+              <button class="text-action" id="replace-button" type="button" hidden>Replace</button>
+            </div>
+
+            <label class="file-target" id="drop-zone">
+              <input
+                id="document-file"
+                type="file"
+                accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx"
+              />
+              <span class="upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3v12m0-12L7.5 7.5M12 3l4.5 4.5M5 14v5h14v-5" />
+                </svg>
+              </span>
+              <span class="file-target-title">Drop a PDF or DOCX here</span>
+              <span class="file-target-meta">or click to browse</span>
+            </label>
+
+            <div class="file-card" id="file-card" hidden>
+              <span class="file-type" id="file-type">PDF</span>
+              <span class="file-details">
+                <strong id="file-name"></strong>
+                <small id="file-meta"></small>
+              </span>
+              <span class="file-ready" aria-label="Ready">✓</span>
+            </div>
+          </section>
+
+          <section class="panel-section editing-section" aria-labelledby="editing-title">
+            <h2 id="editing-title">Edit document</h2>
+            <div class="document-tool-area">
+              <div class="document-tools" aria-label="Tools placed directly on the document">
+                <button class="document-tool" id="add-text-box-button" type="button" disabled>
+                  <span aria-hidden="true">T</span>
+                  Text box
+                </button>
+                <button class="document-tool" id="draw-on-page-button" type="button" disabled>
+                  <span aria-hidden="true">✎</span>
+                  <span id="draw-on-page-label">Draw signature</span>
+                </button>
+                <input
+                  id="signature-file"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+                  hidden
+                />
+                <button class="document-tool" id="upload-signature-button" type="button" disabled>
+                  <span aria-hidden="true">↑</span>
+                  Upload signature
+                </button>
+                <label class="document-size" for="font-size">
+                  <span>Text size</span>
+                  <select id="font-size">
+                    <option value="8">8 pt</option>
+                    <option value="9">9 pt</option>
+                    <option value="10" selected>10 pt</option>
+                    <option value="11">11 pt</option>
+                    <option value="12">12 pt</option>
+                    <option value="14">14 pt</option>
+                    <option value="16">16 pt</option>
+                    <option value="18">18 pt</option>
+                    <option value="20">20 pt</option>
+                    <option value="24">24 pt</option>
+                    <option value="28">28 pt</option>
+                    <option value="32">32 pt</option>
+                  </select>
+                </label>
+                <button class="document-tool tool-action" id="undo-button" type="button" disabled>
+                  <span aria-hidden="true">↶</span>
+                  Undo
+                </button>
+                <button class="document-tool tool-action" id="redo-button" type="button" disabled>
+                  <span aria-hidden="true">↷</span>
+                  Redo
+                </button>
+                <button class="document-tool tool-action" id="remove-button" type="button" disabled>
+                  <span aria-hidden="true">×</span>
+                  Remove
+                </button>
+                <button class="document-tool done-tool" id="done-button" type="button" disabled>
+                  Done
+                </button>
+              </div>
+              <div class="placement-message" id="placement-message">
+                <span class="placement-dot" aria-hidden="true"></span>
+                <span id="placement-message-text">Choose a document to begin</span>
+              </div>
+            </div>
+          </section>
+
+          <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
+        </aside>
+
+        <section class="preview-panel" aria-label="Document preview">
+          <header class="preview-toolbar" id="preview-toolbar" hidden>
+            <div class="page-controls" id="page-controls" hidden>
+              <button id="previous-page" type="button" aria-label="Previous page">‹</button>
+              <label for="page-number">Page</label>
+              <input id="page-number" type="number" min="1" value="1" />
+              <span id="page-count">of 1</span>
+              <button id="next-page" type="button" aria-label="Next page">›</button>
+              <span class="toolbar-divider" aria-hidden="true"></span>
+              <label class="zoom-label" for="zoom-select">Zoom</label>
+              <select id="zoom-select">
+                <option value="0.8">80%</option>
+                <option value="1" selected>100%</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+              </select>
+            </div>
+          </header>
+
+          <div class="preview-viewport" id="preview-viewport">
+            <div class="empty-state" id="empty-state">
+              <span class="empty-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48">
+                  <path d="M13 5h15l8 8v30H13V5Z" />
+                  <path d="M28 5v9h8M19 23h12M19 29h12M19 35h8" />
+                </svg>
+              </span>
+              <h2>Your document will appear here</h2>
+              <p>PDF and DOCX files are processed privately in this browser.</p>
+            </div>
+
+            <div class="loading-state" id="loading-state" hidden>
+              <span class="spinner" aria-hidden="true"></span>
+              <strong id="loading-title">Preparing document…</strong>
+              <p id="loading-note">This may take a moment.</p>
+            </div>
+
+            <div class="pages-container" id="page-wrap" hidden></div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

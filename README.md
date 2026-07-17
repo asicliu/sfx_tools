@@ -10,13 +10,14 @@ Build the complete utilities hub from the repository root:
 npm run build
 ```
 
-The generated site is written to `dist/` with the hub at `/`, Markdown to PDF at `/markdown-to-pdf/`, and PDF Watermark at `/pdf-watermark-js/`.
+The generated site is written to `dist/` with the hub at `/` and each utility under its own path.
 
 ## Tools
 
 - [JSX Renderer](tools/jsx-renderer) - client-side browser app for rendering React JSX files and exporting them to HTML.
 - [Markdown to PDF](tools/markdown-to-pdf) - client-side browser app for converting Markdown documents to PDF.
 - [PDF Watermark JS](tools/pdf-watermark-js) - client-side browser app for adding text watermarks to PDF files.
+- [PDF Fill & Sign](tools/pdf-fill-sign) - client-side browser app for filling and signing PDF or DOCX files.
 
 ## Cloudflare Workers Setup
 
