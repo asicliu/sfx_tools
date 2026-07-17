@@ -14,6 +14,8 @@
     "check": "npm run build && npm run smoke"
   },
   "dependencies": {
+    "docx-preview": "^0.4.0",
+    "html-to-image": "^1.11.13",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "4.8.69"
   },

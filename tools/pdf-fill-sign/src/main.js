@@ -252,7 +252,9 @@ async function loadDocument(file) {
     scrollToPage(1, "auto");
     setStatus(
       converted
-        ? "Word document converted with Microsoft Word. Scroll continuously through all pages."
+        ? conversion.conversionMode === "microsoft-word"
+          ? "Word document converted with Microsoft Word. Scroll continuously through all pages."
+          : "Word document converted in this browser. Complex Office-only formatting may differ slightly."
         : "Document ready. Scroll continuously through all pages.",
       "success",
     );
