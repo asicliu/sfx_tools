@@ -12,7 +12,7 @@ Local tool for filling and signing PDF and DOCX files. Files stay on the device 
 - Finish editing with a single Done action, then download the PDF.
 - Download the finished document as a PDF.
 
-During local development on macOS, DOCX conversion uses Microsoft Word when available for maximum layout fidelity. In a hosted deployment, the app falls back to `docx-preview` and renders each declared Word page to PDF entirely in the browser. Typical text, tables, headers, footers, and images retain their page layout, though SmartArt, unavailable custom fonts, and other Office-only features can differ from Microsoft Word.
+During local development on macOS, DOCX conversion uses Microsoft Word when available for maximum layout fidelity. In a hosted deployment, the app falls back to `docx-preview` and renders each declared Word page to PDF entirely in the browser. Typical text, tables, headers, footers, and images retain their page layout, though SmartArt, unavailable custom fonts, and other Office-only features can differ from Microsoft Word. Before rasterizing, the hosted converter compares Word's stored page count with the browser-rendered page count and stops with an instruction to upload a PDF if they differ.
 
 ## Local development
 

@@ -104,8 +104,9 @@ async function pagesToPdf(pages) {
 async function convertInBrowser(arrayBuffer, onProgress) {
   const host = createOffscreenHost();
   try {
+    let document;
     try {
-      await renderAsync(arrayBuffer, host, undefined, {
+      document = await renderAsync(arrayBuffer, host, undefined, {
         inWrapper: false,
         breakPages: true,
       });
@@ -116,6 +117,14 @@ async function convertInBrowser(arrayBuffer, onProgress) {
 
     const sections = [...host.querySelectorAll("section.docx")];
     if (!sections.length) throw new Error("No pages were found in this Word document.");
+    const expectedPages = Number(document?.extendedPropsPart?.props?.pages);
+    if (Number.isInteger(expectedPages) && expectedPages > 0 && expectedPages !== sections.length) {
+      throw new Error(
+        `This document has ${expectedPages} pages in Microsoft Word, but the browser could only ` +
+          `preserve ${sections.length}. To prevent a distorted signed document, export it to PDF ` +
+          `in Microsoft Word and upload the PDF instead.`,
+      );
+    }
 
     const pages = [];
     for (const [index, section] of sections.entries()) {
