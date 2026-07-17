@@ -56,6 +56,10 @@ async function build() {
       "  X-Content-Type-Options: nosniff",
       "  Referrer-Policy: strict-origin-when-cross-origin",
       "",
+      "/pdf-fill-sign/*",
+      "  Cross-Origin-Opener-Policy: same-origin",
+      "  Cross-Origin-Embedder-Policy: require-corp",
+      "",
     ].join("\n"),
   );
 

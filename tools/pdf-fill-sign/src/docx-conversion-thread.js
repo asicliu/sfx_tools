@@ -1,4 +1,4 @@
-import { ZetaHelperThread } from "/vendor/zetajs/zetaHelper.js";
+import { ZetaHelperThread } from "./vendor/zetajs/zetaHelper.js";
 
 const zetaThread = new ZetaHelperThread();
 const zetajs = zetaThread.zetajs;

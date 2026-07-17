@@ -1,5 +1,5 @@
-const ZETA_HELPER_URL = "/vendor/zetajs/zetaHelper.js";
-const CONVERSION_THREAD_URL = "/docx-conversion-thread.js";
+const ZETA_HELPER_URL = `${import.meta.env.BASE_URL}vendor/zetajs/zetaHelper.js`;
+const CONVERSION_THREAD_URL = `${import.meta.env.BASE_URL}docx-conversion-thread.js`;
 const INITIALIZATION_TIMEOUT_MS = 180_000;
 const CONVERSION_TIMEOUT_MS = 120_000;
 
