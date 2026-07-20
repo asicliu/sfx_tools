@@ -4,6 +4,10 @@ import { createRoot } from "react-dom/client";
 import { createExportHtml, evaluateJsx, normalizeHtmlFilename } from "./transform.js";
 import "./styles.css";
 
+document.querySelector("#app-version").textContent = `v${__APP_VERSION__}`;
+document.documentElement.dataset.appVersion = __APP_VERSION__;
+globalThis.__SFX_JSX_RENDERER_VERSION__ = __APP_VERSION__;
+
 const sampleJsx = `import { useState } from "react";
 
 export default function DemoCard() {

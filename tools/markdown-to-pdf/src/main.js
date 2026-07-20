@@ -3,6 +3,10 @@ import { marked } from "marked";
 import { downloadMarkdownPdf } from "./pdf.js";
 import "./styles.css";
 
+document.querySelector("#app-version").textContent = `v${__APP_VERSION__}`;
+document.documentElement.dataset.appVersion = __APP_VERSION__;
+globalThis.__SFX_MARKDOWN_TO_PDF_VERSION__ = __APP_VERSION__;
+
 marked.use({
   gfm: true,
   breaks: false,

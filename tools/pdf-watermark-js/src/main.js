@@ -2,6 +2,10 @@ import { applyWatermark } from "./watermark.js";
 import { encryptPdfPermissions, generatePermissionPassword } from "./encryption.js";
 import "./styles.css";
 
+document.querySelector("#app-version").textContent = `v${__APP_VERSION__}`;
+document.documentElement.dataset.appVersion = __APP_VERSION__;
+globalThis.__SFX_PDF_WATERMARK_JS_VERSION__ = __APP_VERSION__;
+
 const controls = {
   form: document.querySelector("#watermark-form"),
   dropZone: document.querySelector("#drop-zone"),
