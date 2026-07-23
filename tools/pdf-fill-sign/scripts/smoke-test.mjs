@@ -241,3 +241,37 @@ function assertApprox(actual, expected, tolerance, label) {
 }
 
 console.log("detect-blanks synthetic checks passed");
+
+// --- Detect-blanks: real PDF round-trip via pdfjs legacy build ---
+{
+  const formDoc = await PDFDocument.create();
+  const formPage = formDoc.addPage([612, 792]);
+  const formFont = await formDoc.embedFont(StandardFonts.Helvetica);
+  formPage.drawText("Name: ______________", { x: 72, y: 700, size: 12, font: formFont });
+  formPage.drawText("Phone ..............", { x: 72, y: 660, size: 12, font: formFont });
+  formPage.drawText("Date:", { x: 72, y: 620, size: 12, font: formFont });
+  const formBytes = await formDoc.save();
+
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const parsed = await pdfjs.getDocument({ data: formBytes.slice(), verbosity: 0 }).promise;
+  const parsedPage = await parsed.getPage(1);
+  const viewport = parsedPage.getViewport({ scale: 1 });
+  const { items } = await parsedPage.getTextContent();
+  const regions = detectBlankRegions(items, viewport.width, viewport.height);
+  await parsed.destroy();
+
+  if (regions.length !== 3) {
+    throw new Error(`fixture PDF: expected 3 regions, got ${regions.length}`);
+  }
+  // Top-to-bottom: underscore run (y≈700), dotted leader (y≈660), colon gap (y≈620).
+  assertApprox(regions[0].x, 0.18, 0.03, "fixture underscore x");
+  assertApprox(regions[0].y, 1 - 735 / 792, 0.03, "fixture underscore y");
+  assertApprox(regions[1].y, 1 - 695 / 792, 0.03, "fixture dotted y");
+  assertApprox(regions[2].y, 1 - 655 / 792, 0.03, "fixture colon-gap y");
+  // The Date: gap extends to the right content margin.
+  assertApprox(regions[2].x + regions[2].width, (612 - 40) / 612, 0.02, "fixture colon-gap right edge");
+  for (const region of regions) {
+    assertEqual(region.fontSize, 12, "fixture fontSize");
+  }
+  console.log("detect-blanks fixture PDF checks passed");
+}
