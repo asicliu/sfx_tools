@@ -75,8 +75,11 @@ Each region becomes a standard `textbox` annotation (no new annotation type;
 - `x`, `y`, `width` from the region, converted to normalized page fractions.
 - `fontSize`: the detected line's font size converted to the app's px scale,
   clamped to 8–14.
-- `height`: sized from the line height with the same 38 px-at-zoom-1 floor
-  that `growTextBox` enforces; `autoGrow: true`.
+- `height`: the box top is anchored at the detected span's baseline plus the
+  7px top inset plus the clamped font size, so the exported first text line's
+  baseline lands on the detected blank's baseline; the box height is sized
+  from the line height (same 38 px-at-zoom-1 floor that `growTextBox`
+  enforces) and extends below that anchored top; `autoGrow: true`.
 - Boxes are immediately editable, draggable, resizable, and deletable exactly
   like manually placed ones.
 

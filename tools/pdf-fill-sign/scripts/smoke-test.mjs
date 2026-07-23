@@ -192,6 +192,17 @@ function assertApprox(actual, expected, tolerance, label) {
   assertEqual(regions.length, 0, "colon without gap ignored");
 }
 
+// Colon gap where the next item starts slightly before the label's reported end
+// (kerning/width overestimate) must not extend the gap over existing text.
+{
+  const regions = detectBlankRegions(
+    [syntheticItem("Name:", 72, 700), syntheticItem("John Smith", 101, 700)],
+    612,
+    792,
+  );
+  assertEqual(regions.length, 0, "overlapping next item yields no colon gap");
+}
+
 // Colon gap that touches a following underscore run merges into a single region.
 {
   const regions = detectBlankRegions(
@@ -265,9 +276,9 @@ console.log("detect-blanks synthetic checks passed");
   }
   // Top-to-bottom: underscore run (y≈700), dotted leader (y≈660), colon gap (y≈620).
   assertApprox(regions[0].x, 0.18, 0.03, "fixture underscore x");
-  assertApprox(regions[0].y, 1 - 735 / 792, 0.03, "fixture underscore y");
-  assertApprox(regions[1].y, 1 - 695 / 792, 0.03, "fixture dotted y");
-  assertApprox(regions[2].y, 1 - 655 / 792, 0.03, "fixture colon-gap y");
+  assertApprox(regions[0].y, 1 - 719 / 792, 0.03, "fixture underscore y");
+  assertApprox(regions[1].y, 1 - 679 / 792, 0.03, "fixture dotted y");
+  assertApprox(regions[2].y, 1 - 639 / 792, 0.03, "fixture colon-gap y");
   // The Date: gap extends to the right content margin.
   assertApprox(regions[2].x + regions[2].width, (612 - 40) / 612, 0.02, "fixture colon-gap right edge");
   for (const region of regions) {

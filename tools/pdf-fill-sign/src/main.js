@@ -794,10 +794,16 @@ async function detectAndPlaceTextBoxes() {
     for (let pageNumber = 1; pageNumber <= state.pageCount; pageNumber += 1) {
       if (found.length >= MAX_AUTO_REGIONS) break;
       const page = await pdf.getPage(pageNumber);
-      if (state.pdf !== pdf) return;
+      if (state.pdf !== pdf) {
+        setStatus("");
+        return;
+      }
       const viewport = page.getViewport({ scale: 1 });
       const { items } = await page.getTextContent();
-      if (state.pdf !== pdf) return;
+      if (state.pdf !== pdf) {
+        setStatus("");
+        return;
+      }
       const regions = detectBlankRegions(items, viewport.width, viewport.height, {
         maxRegions: MAX_AUTO_REGIONS - found.length,
       });
@@ -826,7 +832,8 @@ async function detectAndPlaceTextBoxes() {
     }
     state.selectedId = null;
     renderAnnotations();
-    const capNote = found.length >= MAX_AUTO_REGIONS ? " Limit of 200 boxes reached." : "";
+    const capNote =
+      found.length >= MAX_AUTO_REGIONS ? ` Limit of ${MAX_AUTO_REGIONS} boxes reached.` : "";
     setStatus(
       `${found.length} text box${found.length === 1 ? "" : "es"} placed over detected blanks. One Undo removes them all.${capNote}`,
       "success",

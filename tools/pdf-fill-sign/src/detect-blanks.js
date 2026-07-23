@@ -1,5 +1,3 @@
-const MIN_UNDERSCORE_RUN = 3;
-const MIN_DOT_RUN = 5;
 const MIN_WIDTH_FRACTION = 0.02;
 const LABEL_GAP_MIN_EM = 1.5;
 const RIGHT_CONTENT_MARGIN = 40;
@@ -10,14 +8,13 @@ const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 14;
 const BOX_MIN_HEIGHT = 38;
 const BOX_HEIGHT_FACTOR = 1.6;
-const BASELINE_DROP_FACTOR = 0.25;
+// Matches the export/textarea top inset (see pdf-export.js) so the exported first
+// text line's baseline coincides with the detected span's baseline.
+const TEXT_TOP_INSET = 7;
 
 export const MAX_AUTO_REGIONS = 200;
 
-const RUN_PATTERNS = [
-  { pattern: /_{3,}/g, minLength: MIN_UNDERSCORE_RUN },
-  { pattern: /\.{5,}/g, minLength: MIN_DOT_RUN },
-];
+const RUN_PATTERNS = [/_{3,}/g, /\.{5,}/g];
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -56,7 +53,7 @@ function collectRunSpans(line) {
   const spans = [];
   for (const entry of line.entries) {
     const charWidth = entry.width / entry.str.length;
-    for (const { pattern } of RUN_PATTERNS) {
+    for (const pattern of RUN_PATTERNS) {
       pattern.lastIndex = 0;
       let match;
       while ((match = pattern.exec(entry.str)) !== null) {
@@ -88,7 +85,7 @@ function collectLabelGapSpans(line, pageWidth) {
   for (const [index, entry] of line.entries.entries()) {
     if (!entry.str.trimEnd().endsWith(":")) continue;
     const gapStart = entry.x + entry.width;
-    const next = line.entries.slice(index + 1).find((candidate) => candidate.x >= gapStart);
+    const next = line.entries[index + 1];
     const gapEnd = next ? next.x : pageWidth - RIGHT_CONTENT_MARGIN;
     if (gapEnd - gapStart < LABEL_GAP_MIN_EM * entry.fontSize) continue;
     spans.push({
@@ -116,9 +113,9 @@ function mergeLineSpans(spans) {
 }
 
 function toRegion(span, pageWidth, pageHeight) {
+  const fontSize = Math.round(clamp(span.fontSize, MIN_FONT_SIZE, MAX_FONT_SIZE));
   const heightPdf = Math.max(BOX_HEIGHT_FACTOR * span.fontSize, BOX_MIN_HEIGHT);
-  const bottomPdf = span.baseline - BASELINE_DROP_FACTOR * span.fontSize;
-  const topPdf = Math.min(bottomPdf + heightPdf, pageHeight);
+  const topPdf = Math.min(span.baseline + TEXT_TOP_INSET + fontSize, pageHeight);
   const x = clamp(span.start / pageWidth, 0, 1);
   const width = clamp((span.end - span.start) / pageWidth, 0, 1 - x);
   const height = clamp(heightPdf / pageHeight, 0, 1);
@@ -128,7 +125,7 @@ function toRegion(span, pageWidth, pageHeight) {
     y,
     width,
     height,
-    fontSize: Math.round(clamp(span.fontSize, MIN_FONT_SIZE, MAX_FONT_SIZE)),
+    fontSize,
   };
 }
 
