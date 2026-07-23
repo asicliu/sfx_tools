@@ -1,4 +1,5 @@
 import { convertDocxToPdf } from "./docx.js";
+import { detectBlankRegions, MAX_AUTO_REGIONS } from "./detect-blanks.js";
 import {
   downloadPdf,
   formatBytes,
@@ -36,6 +37,7 @@ const controls = {
   exportButton: document.querySelector("#export-button"),
   status: document.querySelector("#status-line"),
   addTextBoxButton: document.querySelector("#add-text-box-button"),
+  detectBlanksButton: document.querySelector("#detect-blanks-button"),
   drawOnPageButton: document.querySelector("#draw-on-page-button"),
   drawOnPageLabel: document.querySelector("#draw-on-page-label"),
   uploadSignatureButton: document.querySelector("#upload-signature-button"),
@@ -119,6 +121,7 @@ function setLoading(title, note = "This may take a moment.") {
 function updateActionState() {
   const hasDocument = Boolean(state.pdf && !state.busy);
   controls.addTextBoxButton.disabled = !hasDocument;
+  controls.detectBlanksButton.disabled = !hasDocument;
   controls.drawOnPageButton.disabled = !hasDocument;
   controls.uploadSignatureButton.disabled = !hasDocument;
   controls.fontSize.disabled = !hasDocument;
@@ -777,6 +780,64 @@ function beginTextBoxPlacement() {
   state.pageViews.get(state.currentPage)?.stage.focus({ preventScroll: true });
 }
 
+async function detectAndPlaceTextBoxes() {
+  if (!state.pdf || state.busy) return;
+  const pdf = state.pdf;
+  state.pendingPlacement = null;
+  state.inkMode = false;
+  state.inkStroke = null;
+  controls.detectBlanksButton.disabled = true;
+  setStatus("Scanning for fillable blanks…");
+
+  try {
+    const found = [];
+    for (let pageNumber = 1; pageNumber <= state.pageCount; pageNumber += 1) {
+      if (found.length >= MAX_AUTO_REGIONS) break;
+      const page = await pdf.getPage(pageNumber);
+      if (state.pdf !== pdf) return;
+      const viewport = page.getViewport({ scale: 1 });
+      const { items } = await page.getTextContent();
+      if (state.pdf !== pdf) return;
+      const regions = detectBlankRegions(items, viewport.width, viewport.height, {
+        maxRegions: MAX_AUTO_REGIONS - found.length,
+      });
+      for (const region of regions) found.push({ pageNumber, region });
+    }
+
+    if (!found.length) {
+      setStatus("No fillable blanks detected in this document.");
+      return;
+    }
+
+    recordHistory();
+    for (const { pageNumber, region } of found) {
+      state.annotations.push({
+        id: createId(),
+        type: "textbox",
+        page: pageNumber,
+        text: "",
+        fontSize: region.fontSize,
+        width: region.width,
+        height: region.height,
+        autoGrow: true,
+        x: region.x,
+        y: region.y,
+      });
+    }
+    state.selectedId = null;
+    renderAnnotations();
+    const capNote = found.length >= MAX_AUTO_REGIONS ? " Limit of 200 boxes reached." : "";
+    setStatus(
+      `${found.length} text box${found.length === 1 ? "" : "es"} placed over detected blanks. One Undo removes them all.${capNote}`,
+      "success",
+    );
+  } catch (error) {
+    setStatus(errorMessage(error), "error");
+  } finally {
+    updateActionState();
+  }
+}
+
 function toggleInkMode() {
   if (!state.pdf) return;
   state.inkMode = !state.inkMode;
@@ -1169,6 +1230,7 @@ function initialize() {
   });
 
   controls.addTextBoxButton.addEventListener("click", beginTextBoxPlacement);
+  controls.detectBlanksButton.addEventListener("click", () => void detectAndPlaceTextBoxes());
   controls.drawOnPageButton.addEventListener("click", toggleInkMode);
   controls.uploadSignatureButton.addEventListener("click", () => controls.signatureFile.click());
   controls.signatureFile.addEventListener("change", () => void handleSignatureUpload());
