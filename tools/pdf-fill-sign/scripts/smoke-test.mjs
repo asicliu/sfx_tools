@@ -102,3 +102,142 @@ if (loaded.getProducer() !== "SFX Tools PDF Fill & Sign") {
 console.log(
   `Smoke test passed: v${packageJson.version}, browser Office assets, and ${output.length} signed PDF bytes`,
 );
+
+// --- Detect-blanks: synthetic text-item cases ---
+const { detectBlankRegions, MAX_AUTO_REGIONS } = await import("../src/detect-blanks.js");
+
+function syntheticItem(str, x, y, fontSize = 12) {
+  return {
+    str,
+    transform: [fontSize, 0, 0, fontSize, x, y],
+    width: str.length * fontSize * 0.5,
+    height: fontSize,
+  };
+}
+
+function assertEqual(actual, expected, label) {
+  if (actual !== expected) {
+    throw new Error(`${label}: expected ${expected}, got ${actual}`);
+  }
+}
+
+function assertApprox(actual, expected, tolerance, label) {
+  if (Math.abs(actual - expected) > tolerance) {
+    throw new Error(`${label}: expected ~${expected} (±${tolerance}), got ${actual}`);
+  }
+}
+
+// Underscore run inside a single item.
+{
+  const regions = detectBlankRegions(
+    [syntheticItem("Name: __________", 72, 700)],
+    612,
+    792,
+  );
+  assertEqual(regions.length, 1, "single-item underscore run count");
+  // Run starts at char index 6 of 16; charWidth = width/16 = 6 → start = 72 + 36 = 108.
+  assertApprox(regions[0].x, 108 / 612, 0.01, "single-item run x");
+  assertApprox(regions[0].width, 60 / 612, 0.01, "single-item run width");
+  assertEqual(regions[0].fontSize, 12, "single-item run fontSize");
+  if (regions[0].y < 0 || regions[0].y + regions[0].height > 1) {
+    throw new Error("single-item run region out of page bounds");
+  }
+}
+
+// Underscore run split across two adjacent items on one line merges into one region.
+{
+  const first = syntheticItem("____", 100, 700); // width 24, ends at 124
+  const second = syntheticItem("____", 126, 700); // 2pt gap ≤ 0.6em join threshold
+  const regions = detectBlankRegions([first, second], 612, 792);
+  assertEqual(regions.length, 1, "split-run merge count");
+  assertApprox(regions[0].width, 50 / 612, 0.01, "split-run merged width");
+}
+
+// Sliver regions (narrower than 2% of page width) are rejected.
+{
+  const sliver = { str: "___", transform: [12, 0, 0, 12, 100, 700], width: 8, height: 12 };
+  assertEqual(detectBlankRegions([sliver], 612, 792).length, 0, "sliver rejected");
+}
+
+// Dotted leader of ≥5 dots is detected; 4 dots are not.
+{
+  assertEqual(
+    detectBlankRegions([syntheticItem("Phone ..........", 72, 700)], 612, 792).length,
+    1,
+    "dotted leader detected",
+  );
+  assertEqual(
+    detectBlankRegions([syntheticItem("Phone ....", 72, 700)], 612, 792).length,
+    0,
+    "short dot run ignored",
+  );
+}
+
+// Label-colon with a trailing gap to the right margin.
+{
+  const regions = detectBlankRegions([syntheticItem("Date:", 72, 700)], 612, 792);
+  assertEqual(regions.length, 1, "colon-gap count");
+  // Gap runs from end of "Date:" (72 + 30 = 102) to the right margin (612 - 40 = 572).
+  assertApprox(regions[0].x, 102 / 612, 0.01, "colon-gap x");
+  assertApprox(regions[0].width, (572 - 102) / 612, 0.01, "colon-gap width");
+}
+
+// Label-colon with no meaningful gap before the next item is ignored.
+{
+  const regions = detectBlankRegions(
+    [syntheticItem("Name:", 72, 700), syntheticItem("John", 104, 700)],
+    612,
+    792,
+  );
+  assertEqual(regions.length, 0, "colon without gap ignored");
+}
+
+// Colon gap that touches a following underscore run merges into a single region.
+{
+  const regions = detectBlankRegions(
+    [syntheticItem("Name:", 72, 700), syntheticItem("__________", 120, 700)],
+    612,
+    792,
+  );
+  assertEqual(regions.length, 1, "colon gap + run merged into one region");
+  assertApprox(regions[0].x, 102 / 612, 0.01, "merged gap+run x");
+  assertApprox(regions[0].width, (180 - 102) / 612, 0.01, "merged gap+run width");
+}
+
+// Items on different baselines are separate lines; regions sort top-to-bottom.
+{
+  const regions = detectBlankRegions(
+    [syntheticItem("B: ______", 72, 600), syntheticItem("A: ______", 72, 700)],
+    612,
+    792,
+  );
+  assertEqual(regions.length, 2, "two lines detected");
+  if (regions[0].y >= regions[1].y) {
+    throw new Error("regions are not sorted top-to-bottom");
+  }
+}
+
+// Rotated text is ignored.
+{
+  const rotated = { str: "______", transform: [0, 12, -12, 0, 100, 700], width: 36, height: 12 };
+  assertEqual(detectBlankRegions([rotated], 612, 792).length, 0, "rotated text ignored");
+}
+
+// Region cap: 250 candidate lines yield exactly MAX_AUTO_REGIONS.
+{
+  const many = Array.from({ length: 250 }, (_, index) =>
+    syntheticItem("__________", 72, 3900 - index * 15),
+  );
+  assertEqual(
+    detectBlankRegions(many, 612, 4000).length,
+    MAX_AUTO_REGIONS,
+    "region cap enforced",
+  );
+  assertEqual(
+    detectBlankRegions(many, 612, 4000, { maxRegions: 10 }).length,
+    10,
+    "maxRegions option respected",
+  );
+}
+
+console.log("detect-blanks synthetic checks passed");
