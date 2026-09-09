@@ -40,6 +40,38 @@ if (
   throw new Error("SVG blip rewrite smoke test failed.");
 }
 
+// A raster image followed by shapes and SVG-only images used to match as
+// one blip, deleting shape dimensions and leaving SVG relationships unset.
+const rasterPicture =
+  '<p:pic><p:blipFill><a:blip r:embed="rId1" cstate="print"/>' +
+  '<a:stretch><a:fillRect/></a:stretch></p:blipFill></p:pic>';
+const interveningShape =
+  '<p:sp><p:spPr><a:xfrm><a:off x="100" y="200"/>' +
+  '<a:ext cx="300" cy="400"/></a:xfrm></p:spPr></p:sp>';
+const svgOnlyPicture =
+  '<p:pic><p:blipFill><a:blip><a:extLst><a:ext uri="svg">' +
+  '<asvg:svgBlip r:embed="rId7"/></a:ext></a:extLst></a:blip>' +
+  '</p:blipFill></p:pic>';
+const mixedPictures = rasterPicture + interveningShape + svgOnlyPicture;
+const mixedRewrite = rewriteSvgBlips(mixedPictures);
+if (
+  mixedRewrite.xml !== rasterPicture + interveningShape +
+    '<p:pic><p:blipFill><a:blip r:embed="rId7"><a:extLst></a:extLst>' +
+    '</a:blip></p:blipFill></p:pic>' ||
+  mixedRewrite.svgRelIds.join() !== "rId7" ||
+  rewriteSvgBlips(mixedRewrite.xml).xml !== mixedRewrite.xml
+) {
+  throw new Error("Mixed raster/SVG images must preserve intervening shapes.");
+}
+
+const preservedExtension = '<a:ext uri="other"/>';
+const extensionRewrite = rewriteSvgBlips(
+  svgOnlyPicture.replace('<a:ext uri="svg">', preservedExtension + '<a:ext uri="svg">'),
+);
+if (!extensionRewrite.xml.includes(preservedExtension)) {
+  throw new Error("SVG rewriting must preserve unrelated self-closing extensions.");
+}
+
 const svgRelsXml =
   '<Relationships><Relationship Target="../media/image6.svg" Id="rId2" Type="t"/></Relationships>';
 

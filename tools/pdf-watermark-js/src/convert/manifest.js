@@ -113,13 +113,15 @@ export function sanitizeSlideXml(slideXml) {
 export function rewriteSvgBlips(slideXml) {
   const svgRelIds = new Set();
 
+  // Self-closing raster blips must not consume a later SVG blip's closing
+  // tag. Likewise, a:ext is also used for self-closing shape dimensions.
   const xml = slideXml.replace(
-    /<a:blip(\s[^>]*)?>([\s\S]*?)<\/a:blip>/g,
+    /<a:blip\b(?![^>]*\/>)(\s[^>]*)?>([\s\S]*?)<\/a:blip>/g,
     (match, attrs = "", inner) => {
       const svgRelId = inner.match(/<asvg:svgBlip\b[^>]*\br:embed="([^"]+)"/)?.[1];
       if (!svgRelId) return match;
 
-      const cleanedInner = inner.replace(/<a:ext\b[^>]*>[\s\S]*?<\/a:ext>/g, (ext) =>
+      const cleanedInner = inner.replace(/<a:ext\b(?![^>]*\/>)[^>]*>[\s\S]*?<\/a:ext>/g, (ext) =>
         ext.includes("svgBlip") ? "" : ext,
       );
 
