@@ -23,6 +23,11 @@ export function countSlideIds(presentationXml) {
   return (presentationXml.match(/<p:sldId\s/g) || []).length;
 }
 
+export function isSlideHidden(slideXml) {
+  const tag = slideXml.match(/<p:sld\b[^>]*>/)?.[0] ?? "";
+  return /\sshow\s*=\s*(["'])(?:0|false)\1/.test(tag);
+}
+
 // Slide part names (e.g. "ppt/slides/slide4.xml") in true presentation
 // order: sldIdLst r:id references resolved through presentation.xml.rels.
 export function parseSlideOrder(presentationXml, relsXml) {
@@ -47,9 +52,14 @@ export function parseSlideOrder(presentationXml, relsXml) {
 // Rewrites [Content_Types].xml so only one slide part is declared,
 // which limits pptx-preview to loading exactly that slide.
 export function contentTypesForSingleSlide(contentTypesXml, slidePartName) {
+  return contentTypesForSlides(contentTypesXml, [slidePartName]);
+}
+
+export function contentTypesForSlides(contentTypesXml, slidePartNames) {
+  const included = new Set(slidePartNames.map((name) => `/${name}`));
   return contentTypesXml.replace(/<Override\b[^>]*\/>/g, (override) => {
     if (!override.includes(SLIDE_CONTENT_TYPE)) return override;
-    return override.includes(`PartName="/${slidePartName}"`) ? override : "";
+    return included.has(override.match(/\bPartName="([^"]+)"/)?.[1]) ? override : "";
   });
 }
 

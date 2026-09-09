@@ -2,9 +2,11 @@ import JSZip from "jszip";
 import { init } from "pptx-preview";
 import {
   contentTypesForSingleSlide,
+  contentTypesForSlides,
   countSlideIds,
   describeSlideContent,
   findRelationshipTarget,
+  isSlideHidden,
   parseSlideOrder,
   parseSlideSizePoints,
   rewriteSvgBlips,
@@ -65,8 +67,8 @@ function resolveMediaPath(target) {
 // pptx-preview fails on pictures whose only source is an asvg:svgBlip
 // extension (SVG-only, no raster fallback). Rasterize each such SVG to PNG
 // inside the zip and point the picture at it so the slide keeps its images.
-async function embedSvgFallbacks(zip) {
-  const slidePaths = Object.keys(zip.files).filter((name) =>
+async function embedSvgFallbacks(zip, slidePaths) {
+  slidePaths ??= Object.keys(zip.files).filter((name) =>
     /^ppt\/slides\/slide\d+\.xml$/.test(name),
   );
   let changed = false;
@@ -151,14 +153,14 @@ async function renderSingleSlide(zip, contentTypesXml, partName, size) {
 // [Content_Types].xml, so a slide pptx-preview cannot parse only loses
 // itself instead of silently truncating every slide after it. Pages come
 // out in true sldIdLst order, unlike the library's filename ordering.
-async function convertSlideBySlide(zip, contentTypesXml, slideOrder, size, onProgress) {
+async function convertSlideBySlide(zip, contentTypesXml, slideOrder, size, onProgress, originalOrder) {
   const pages = [];
   const warnings = [];
   const failedSlides = [];
 
   for (const [index, partName] of slideOrder.entries()) {
-    const slideNumber = index + 1;
-    onProgress(slideNumber, slideOrder.length);
+    const slideNumber = originalOrder.indexOf(partName) + 1;
+    onProgress(index + 1, slideOrder.length);
     let page = await renderSingleSlide(zip, contentTypesXml, partName, size);
 
     if (!page) {
@@ -222,11 +224,23 @@ export async function convertPptxToPdf(arrayBuffer, onProgress = () => {}) {
   const size = parseSlideSizePoints(presentationXml);
   const relsXml = (await readZipText(zip, "ppt/_rels/presentation.xml.rels")) ?? "";
   const contentTypesXml = await readZipText(zip, "[Content_Types].xml");
-  const slideOrder = parseSlideOrder(presentationXml, relsXml);
+  const originalOrder = parseSlideOrder(presentationXml, relsXml);
+  const slideOrder = [];
+  for (const partName of originalOrder) {
+    if (!isSlideHidden((await readZipText(zip, partName)) ?? "")) slideOrder.push(partName);
+  }
+  if (originalOrder.length > 0 && slideOrder.length === 0) {
+    throw new Error("This presentation has no visible slides to export.");
+  }
   const expectedSlides = slideOrder.length || countSlideIds(presentationXml);
 
   let deckBuffer = arrayBuffer;
-  if (await embedSvgFallbacks(zip)) {
+  const hasHiddenSlides = slideOrder.length < originalOrder.length;
+  if (hasHiddenSlides && contentTypesXml) {
+    zip.file("[Content_Types].xml", contentTypesForSlides(contentTypesXml, slideOrder));
+  }
+  const svgChanged = await embedSvgFallbacks(zip, originalOrder.length ? slideOrder : undefined);
+  if (svgChanged || hasHiddenSlides) {
     deckBuffer = await zip.generateAsync({ type: "arraybuffer" });
   }
 
@@ -260,5 +274,5 @@ export async function convertPptxToPdf(arrayBuffer, onProgress = () => {}) {
     );
   }
 
-  return convertSlideBySlide(zip, contentTypesXml, slideOrder, size, onProgress);
+  return convertSlideBySlide(zip, contentTypesXml, slideOrder, size, onProgress, originalOrder);
 }

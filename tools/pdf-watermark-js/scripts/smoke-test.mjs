@@ -13,14 +13,27 @@ if (
 import { computePermissions, encryptPdfPermissions } from "../src/encryption.js";
 import {
   contentTypesForSingleSlide,
+  contentTypesForSlides,
   countSlideIds,
   describeSlideContent,
   findRelationshipTarget,
+  isSlideHidden,
   parseSlideOrder,
   parseSlideSizePoints,
   rewriteSvgBlips,
   sanitizeSlideXml,
 } from "../src/convert/manifest.js";
+
+if (
+  !isSlideHidden('<p:sld show="0"><p:cSld/></p:sld>') ||
+  !isSlideHidden("<p:sld show='false'/>") ||
+  isSlideHidden('<p:sld show="1"/>') ||
+  isSlideHidden('<p:sld show="true"/>') ||
+  isSlideHidden('<p:sld><p:cSld show="0"/></p:sld>') ||
+  isSlideHidden('<p:sld showMasterSp="0"/>')
+) {
+  throw new Error("Hidden-slide detection must use only the slide's show attribute.");
+}
 
 const svgSlideXml =
   '<p:pic><p:blipFill><a:blip><a:extLst><a:ext uri="{96DAC541}">' +
@@ -129,6 +142,16 @@ const contentTypesXml =
   `<Override PartName="/ppt/slides/slide1.xml" ContentType="${slideType}"/>` +
   `<Override PartName="/ppt/slides/slide2.xml" ContentType="${slideType}"/></Types>`;
 const singleSlide = contentTypesForSingleSlide(contentTypesXml, "ppt/slides/slide2.xml");
+const visibleSlides = contentTypesForSlides(contentTypesXml, ["ppt/slides/slide2.xml"]);
+const noSlides = contentTypesForSlides(contentTypesXml, []);
+if (
+  visibleSlides !== singleSlide ||
+  noSlides.includes(slideType) ||
+  !noSlides.includes('/ppt/presentation.xml') ||
+  contentTypesForSlides(contentTypesXml, ["ppt/slides/slide2.xml", "ppt/slides/slide1.xml"]) !== contentTypesXml
+) {
+  throw new Error("Hidden slide parts must be excluded without removing other parts.");
+}
 
 if (
   singleSlide.includes("slide1.xml") ||
