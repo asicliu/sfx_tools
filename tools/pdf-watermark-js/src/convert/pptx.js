@@ -9,6 +9,7 @@ import {
   isSlideHidden,
   parseSlideOrder,
   parseSlideSizePoints,
+  prepareSlideForRendering,
   rewriteSvgBlips,
   sanitizeSlideXml,
 } from "./manifest.js";
@@ -226,8 +227,21 @@ export async function convertPptxToPdf(arrayBuffer, onProgress = () => {}) {
   const contentTypesXml = await readZipText(zip, "[Content_Types].xml");
   const originalOrder = parseSlideOrder(presentationXml, relsXml);
   const slideOrder = [];
-  for (const partName of originalOrder) {
-    if (!isSlideHidden((await readZipText(zip, partName)) ?? "")) slideOrder.push(partName);
+  const contentWarnings = [];
+  let contentChanged = false;
+  for (const [index, partName] of originalOrder.entries()) {
+    const originalXml = (await readZipText(zip, partName)) ?? "";
+    if (isSlideHidden(originalXml)) continue;
+    slideOrder.push(partName);
+    const prepared = prepareSlideForRendering(originalXml, index + 1);
+    contentWarnings.push(...prepared.warnings);
+    if (prepared.xml !== originalXml) {
+      zip.file(partName, prepared.xml);
+      contentChanged = true;
+    }
+  }
+  if (contentWarnings.length) {
+    contentWarnings.push("For faithful output, export to PDF in PowerPoint first, then watermark that PDF.");
   }
   if (originalOrder.length > 0 && slideOrder.length === 0) {
     throw new Error("This presentation has no visible slides to export.");
@@ -240,7 +254,7 @@ export async function convertPptxToPdf(arrayBuffer, onProgress = () => {}) {
     zip.file("[Content_Types].xml", contentTypesForSlides(contentTypesXml, slideOrder));
   }
   const svgChanged = await embedSvgFallbacks(zip, originalOrder.length ? slideOrder : undefined);
-  if (svgChanged || hasHiddenSlides) {
+  if (svgChanged || hasHiddenSlides || contentChanged) {
     deckBuffer = await zip.generateAsync({ type: "arraybuffer" });
   }
 
@@ -260,7 +274,7 @@ export async function convertPptxToPdf(arrayBuffer, onProgress = () => {}) {
         onProgress(index + 1, slides.length);
         pages.push(await rasterizePage(slide, size.width, size.height));
       }
-      return { bytes: await pagesToPdf(pages), warnings: [] };
+      return { bytes: await pagesToPdf(pages), warnings: contentWarnings };
     }
   } finally {
     host.remove();
@@ -274,5 +288,6 @@ export async function convertPptxToPdf(arrayBuffer, onProgress = () => {}) {
     );
   }
 
-  return convertSlideBySlide(zip, contentTypesXml, slideOrder, size, onProgress, originalOrder);
+  const converted = await convertSlideBySlide(zip, contentTypesXml, slideOrder, size, onProgress, originalOrder);
+  return { ...converted, warnings: [...contentWarnings, ...converted.warnings] };
 }

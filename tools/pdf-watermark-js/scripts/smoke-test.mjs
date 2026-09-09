@@ -20,9 +20,40 @@ import {
   isSlideHidden,
   parseSlideOrder,
   parseSlideSizePoints,
+  prepareSlideForRendering,
   rewriteSvgBlips,
   sanitizeSlideXml,
 } from "../src/convert/manifest.js";
+
+const equationFallback = prepareSlideForRendering(
+  '<p:sld><mc:AlternateContent><mc:Choice><m:oMath>equation</m:oMath></mc:Choice>' +
+  '<mc:Fallback><p:pic>equation picture</p:pic></mc:Fallback></mc:AlternateContent></p:sld>', 7,
+);
+if (
+  equationFallback.xml !== '<p:sld><p:pic>equation picture</p:pic></p:sld>' ||
+  !equationFallback.warnings.some((warning) => warning.includes('Slide 7'))
+) throw new Error('Equation fallback must be rendered and disclosed before preview.');
+
+const missingContent = prepareSlideForRendering(
+  '<p:sld><mc:AlternateContent><mc:Choice>drawing</mc:Choice></mc:AlternateContent>' +
+  '<m:oMath>equation without fallback</m:oMath></p:sld>', 3,
+);
+if (
+  !missingContent.warnings.some((warning) => warning.includes('omits unsupported content')) ||
+  !missingContent.warnings.some((warning) => warning.includes('equation'))
+) throw new Error('Potential content loss must not be reported as unconditional success.');
+
+const nestedFallback = prepareSlideForRendering(
+  '<p:sld><mc:AlternateContent><mc:Choice>outer</mc:Choice><mc:Fallback>' +
+  '<mc:AlternateContent><mc:Choice>inner</mc:Choice><mc:Fallback><p:pic/></mc:Fallback>' +
+  '</mc:AlternateContent></mc:Fallback></mc:AlternateContent></p:sld>', 2,
+);
+if (nestedFallback.xml !== '<p:sld><p:pic/></p:sld>') {
+  throw new Error('Nested compatibility drawings must preserve valid slide XML.');
+}
+if (prepareSlideForRendering('<p:sld><p:sp/><p:pic/><a:tbl/></p:sld>', 1).warnings.length) {
+  throw new Error('Ordinary shapes, images, and tables should not trigger content-loss warnings.');
+}
 
 if (
   !isSlideHidden('<p:sld show="0"><p:cSld/></p:sld>') ||

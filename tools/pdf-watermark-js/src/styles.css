@@ -307,6 +307,10 @@ h1 {
   color: #067647;
 }
 
+.status-line[data-tone="warning"] {
+  color: #92400e;
+}
+
 .preview-panel {
   display: grid;
   place-items: center;

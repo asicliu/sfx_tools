@@ -217,7 +217,7 @@ async function handleSubmit(event) {
     const baseMessage = options.protectPermissions
       ? "Watermarked PDF downloaded with protected permissions."
       : "Watermarked PDF downloaded.";
-    setStatus([baseMessage, ...conversionWarnings].join(" "), "success");
+    setStatus([baseMessage, ...conversionWarnings].join(" "), conversionWarnings.length ? "warning" : "success");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not process PDF.";
     setStatus(message, "error");

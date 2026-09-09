@@ -8,6 +8,8 @@ PowerPoint and Word files are converted to PDF in the browser before watermarkin
 
 Hidden PowerPoint slides are excluded from export. If every slide is hidden, the app reports that there are no visible slides to export.
 
+PowerPoint compatibility drawings are resolved before rendering, including picture fallbacks for equations. The download status warns about these substitutions, omitted unsupported objects, and content that may render differently even when every slide converts. For faithful Office rendering, export to PDF in PowerPoint first.
+
 - **PowerPoint (`.pptx`)** — slides are rendered with `pptx-preview` and each PDF page uses the exact slide dimensions from the presentation (like PowerPoint's own PDF export), so widescreen decks produce 13.33in x 7.5in pages instead of being fit onto printer paper.
 - **Word (`.docx`)** — pages are rendered with `docx-preview` using the page size declared in the document.
 

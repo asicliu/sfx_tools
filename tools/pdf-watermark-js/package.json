@@ -1,6 +1,6 @@
 {
   "name": "pdf-watermark-js",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Client-side browser app for adding text watermarks to PDF files.",
   "license": "Apache-2.0",
   "private": true,

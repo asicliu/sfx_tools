@@ -88,19 +88,27 @@ const UNSUPPORTED_GRAPHIC_URIS = [
   { match: "/ole", label: "embedded object" },
 ];
 
-// Last-resort rewrite for a slide pptx-preview failed to parse: resolve
-// mc:AlternateContent to its spec-defined fallback branch and drop content
-// classes the renderer cannot handle, so the rest of the slide survives.
+// Resolve compatibility branches and report content the renderer cannot
+// handle. The caller must surface these substitutions and omissions.
 export function sanitizeSlideXml(slideXml) {
   const removed = [];
+  let usedFallback = false;
   let xml = slideXml;
 
-  xml = xml.replace(/<mc:AlternateContent\b[\s\S]*?<\/mc:AlternateContent>/g, (block) => {
-    const fallback = block.match(/<mc:Fallback\b[^>]*>([\s\S]*?)<\/mc:Fallback>/)?.[1];
-    if (fallback != null) return fallback;
-    removed.push("unsupported drawing");
-    return "";
-  });
+  // Resolve innermost blocks first so nested fallbacks cannot truncate XML.
+  const alternateBlock = /<mc:AlternateContent\b(?:(?!<mc:AlternateContent\b)[\s\S])*?<\/mc:AlternateContent>/g;
+  while (alternateBlock.test(xml)) {
+    alternateBlock.lastIndex = 0;
+    xml = xml.replace(alternateBlock, (block) => {
+      const fallback = block.match(/<mc:Fallback\b[^>]*>([\s\S]*?)<\/mc:Fallback>/)?.[1];
+      if (fallback != null) {
+        usedFallback = true;
+        return fallback;
+      }
+      removed.push("unsupported drawing");
+      return "";
+    });
+  }
 
   xml = xml.replace(GRAPHIC_FRAME, (frame) => {
     const uri = frame.match(/<a:graphicData\b[^>]*\buri="([^"]*)"/)?.[1] ?? "";
@@ -113,7 +121,27 @@ export function sanitizeSlideXml(slideXml) {
   xml = xml.replace(/<p:timing>[\s\S]*?<\/p:timing>/g, "");
   xml = xml.replace(/<p:transition\b[^>]*\/>|<p:transition\b[\s\S]*?<\/p:transition>/g, "");
 
-  return { xml, removed: [...new Set(removed)] };
+  return { xml, removed: [...new Set(removed)], usedFallback };
+}
+
+// Run before rendering, since a full page count does not prove that the
+// preview library rendered every equation or drawing on those pages.
+export function prepareSlideForRendering(slideXml, slideNumber) {
+  const { xml, removed, usedFallback } = sanitizeSlideXml(slideXml);
+  const warnings = [];
+  if (usedFallback) {
+    warnings.push(`Slide ${slideNumber} uses PowerPoint's compatibility drawings; check their appearance.`);
+  }
+  if (removed.length) {
+    warnings.push(`Slide ${slideNumber} omits unsupported content (${removed.join(", ")}).`);
+  }
+  const risks = describeSlideContent(xml).filter((label) =>
+    ["equation", "SmartArt diagram", "embedded object", "audio/video", "chart", "modern drawing features"].includes(label),
+  );
+  if (risks.length) {
+    warnings.push(`Slide ${slideNumber} contains ${risks.join(", ")} that may be missing or rendered differently.`);
+  }
+  return { xml, warnings };
 }
 
 // Modern PowerPoint stores vector images as an asvg:svgBlip extension; when

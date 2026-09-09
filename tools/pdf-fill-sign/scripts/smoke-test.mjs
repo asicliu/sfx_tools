@@ -3,6 +3,10 @@ import { access, readFile, readdir } from "node:fs/promises";
 import { applyAnnotations } from "../src/pdf-export.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const lockfile = JSON.parse(await readFile(new URL("../package-lock.json", import.meta.url), "utf8"));
+if (lockfile.version !== packageJson.version || lockfile.packages[""].version !== packageJson.version) {
+  throw new Error("Package and lockfile versions must match.");
+}
 const distUrl = new URL("../dist/", import.meta.url);
 const headers = await readFile(new URL("_headers", distUrl), "utf8");
 if (
