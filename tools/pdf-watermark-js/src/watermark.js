@@ -1,4 +1,5 @@
-import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
+import { PDFDocument, PDFHexString, PDFName, StandardFonts, degrees, rgb } from "pdf-lib";
+import { drawScreenshotWatermark } from "./screenshot-watermark.js";
 
 // Pixels of canvas raster per PDF point (~288 dpi) for non-Latin watermarks.
 const RASTER_SCALE = 4;
@@ -80,7 +81,24 @@ function drawCenteredImage(page, image, stamp, options) {
 }
 
 export async function applyWatermark(pdfBytes, options) {
+  const visible = options.visible !== false;
+  const invisibleText = options.invisibleText?.trim() || "";
+  if (!visible && !invisibleText && !options.screenshotText) {
+    throw new Error("Enable a visible watermark or enter invisible watermark text.");
+  }
   const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+  if (invisibleText) {
+    // Non-rendering Unicode data, repeated per page so page-aware tools can
+    // recover the identifier even when document-level metadata is discarded.
+    const key = PDFName.of("SFXInvisibleWatermark");
+    const value = PDFHexString.fromText(invisibleText);
+    pdfDoc.catalog.set(key, value);
+    for (const page of pdfDoc.getPages()) page.node.set(key, value);
+  }
+  if (!visible) {
+    if (options.screenshotText) drawScreenshotWatermark(pdfDoc, options.screenshotText, options.screenshotStrength);
+    return pdfDoc.save();
+  }
   const useRaster = needsRasterText(options.text);
 
   if (useRaster && typeof document === "undefined") {
@@ -124,5 +142,6 @@ export async function applyWatermark(pdfBytes, options) {
     }
   }
 
+  if (options.screenshotText) drawScreenshotWatermark(pdfDoc, options.screenshotText, options.screenshotStrength);
   return pdfDoc.save();
 }

@@ -172,6 +172,25 @@ h1 {
   gap: 7px;
 }
 
+.watermark-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.watermark-settings:disabled { opacity: 0.5; }
+
+.field-help {
+  margin: 0;
+  color: #626977;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .field label {
   color: #4b5565;
   font-size: 13px;
@@ -364,3 +383,8 @@ h1 {
     max-height: none;
   }
 }
+
+.screenshot-reader { width: 100%; max-width: 520px; align-self: start; overflow-wrap: anywhere; }
+.screenshot-reader h2 { margin: 0; font-size: 17px; }
+.screenshot-reader input { max-width: 100%; }
+.preview-panel { gap: 24px; align-content: start; }

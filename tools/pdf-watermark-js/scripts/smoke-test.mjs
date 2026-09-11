@@ -1,4 +1,5 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import assert from "node:assert/strict";
+import { PDFDocument, PDFHexString, PDFName, StandardFonts, rgb } from "pdf-lib";
 import { applyWatermark, needsRasterText } from "../src/watermark.js";
 
 if (
@@ -231,6 +232,42 @@ const output = await applyWatermark(await source.save(), {
 });
 
 const loaded = await PDFDocument.load(output);
+
+const hiddenId = "Recipient: 测试 😀 / ID-2026 (private)";
+const sourceBytes = await source.save();
+const hiddenOutput = await applyWatermark(sourceBytes, {
+  visible: false,
+  invisibleText: hiddenId,
+});
+const hiddenDoc = await PDFDocument.load(hiddenOutput);
+const hiddenKey = PDFName.of("SFXInvisibleWatermark");
+assert.equal(hiddenDoc.catalog.lookup(hiddenKey, PDFHexString).decodeText(), hiddenId);
+assert.equal(hiddenDoc.getPage(0).node.lookup(hiddenKey, PDFHexString).decodeText(), hiddenId);
+assert.equal(loaded.catalog.has(hiddenKey), false, "Visible-only output should not add hidden data");
+const originalDoc = await PDFDocument.load(sourceBytes);
+assert.equal(hiddenDoc.getPage(0).node.Contents().toString(), originalDoc.getPage(0).node.Contents().toString());
+for (const ref of originalDoc.getPage(0).node.Contents().asArray()) {
+  assert.deepEqual(hiddenDoc.context.lookup(ref).getContents(), originalDoc.context.lookup(ref).getContents(),
+    "Invisible-only watermark must not change page content streams");
+}
+await assert.rejects(applyWatermark(sourceBytes, { visible: false, invisibleText: "  " }), /Enable/);
+
+const combinedOutput = await applyWatermark(sourceBytes, {
+  text: "VISIBLE", invisibleText: hiddenId, fontSize: 36, opacity: 0.2,
+  rotation: 45, colorR: 0.2, colorG: 0.2, colorB: 0.2, repeat: false,
+});
+const combinedDoc = await PDFDocument.load(combinedOutput);
+assert.equal(combinedDoc.catalog.lookup(hiddenKey, PDFHexString).decodeText(), hiddenId);
+assert.ok(combinedDoc.getPage(0).node.Contents().size() > originalDoc.getPage(0).node.Contents().size());
+const multiple = await PDFDocument.create();
+multiple.addPage();
+multiple.addPage();
+const multipleDoc = await PDFDocument.load(await applyWatermark(await multiple.save(), {
+  visible: false, invisibleText: hiddenId,
+}));
+for (const p of multipleDoc.getPages()) {
+  assert.equal(p.node.lookup(hiddenKey, PDFHexString).decodeText(), hiddenId);
+}
 
 if (loaded.getPageCount() !== 1 || output.length === 0) {
   throw new Error("Watermark smoke test failed.");
