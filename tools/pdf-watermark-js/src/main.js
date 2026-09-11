@@ -1,7 +1,6 @@
 import { applyWatermark } from "./watermark.js";
 import { encryptPdfPermissions, generatePermissionPassword } from "./encryption.js";
 import "./styles.css";
-import { createScreenshotCode, screenshotTiles } from "./screenshot-watermark.js";
 
 document.querySelector("#app-version").textContent = `v${__APP_VERSION__}`;
 document.documentElement.dataset.appVersion = __APP_VERSION__;
@@ -19,8 +18,6 @@ const controls = {
   invisible: document.querySelector("#invisible-watermark"),
   invisibleSameText: document.querySelector("#invisible-same-text"),
   invisibleText: document.querySelector("#invisible-text"),
-  screenshot: document.querySelector("#screenshot-watermark"),
-  screenshotStrength: document.querySelector("#screenshot-strength"),
   fontSize: document.querySelector("#font-size"),
   opacity: document.querySelector("#opacity"),
   rotation: document.querySelector("#rotation"),
@@ -53,12 +50,7 @@ function clamp(value, min, max, fallback) {
 
 function getOptions() {
   const color = controls.color.value || "#333333";
-  const hiddenText = controls.invisibleSameText.checked
-    ? controls.text.value.trim() || "CONFIDENTIAL" : controls.invisibleText.value.trim();
   return {
-    screenshotText: controls.screenshot.checked
-      ? (controls.invisible.checked ? hiddenText : controls.text.value.trim() || "CONFIDENTIAL") : "",
-    screenshotStrength: clamp(controls.screenshotStrength.value, 0.06, 0.25, 0.12),
     visible: controls.visible.checked,
     invisibleText: controls.invisible.checked
       ? (controls.invisibleSameText.checked
@@ -157,21 +149,6 @@ function updatePreview() {
   ctx.lineWidth = 2;
   ctx.strokeRect(1, 1, width - 2, height - 2);
 
-  if (options.screenshotText) {
-    try {
-      const modules = createScreenshotCode(options.screenshotText);
-      ctx.fillStyle = "#000000";
-      ctx.globalAlpha = options.screenshotStrength;
-      for (const tile of screenshotTiles(612, 792, modules)) {
-        const cell = tile.size / (modules.size + 8);
-        for (let row = 0; row < modules.size; row++) for (let col = 0; col < modules.size; col++) {
-          if (modules.get(row, col)) ctx.fillRect((tile.x + (col + 4) * cell) * scaleX,
-            (tile.y + (row + 4) * cell) * scaleY, cell * scaleX, cell * scaleY);
-        }
-      }
-    } catch { /* Submit reports invalid/oversized text. */ }
-    ctx.globalAlpha = 1;
-  }
   if (!options.visible) return;
 
   ctx.font = `700 ${previewFontSize}px Helvetica, Arial, sans-serif`;
@@ -215,8 +192,8 @@ async function handleSubmit(event) {
     controls.invisibleText.focus();
     return;
   }
-  if (!options.visible && !options.invisibleText && !options.screenshotText) {
-    setStatus("Enable a visible, invisible, or screenshot-resistant watermark.", "error");
+  if (!options.visible && !options.invisibleText) {
+    setStatus("Enable a visible or invisible watermark.", "error");
     return;
   }
 
@@ -224,7 +201,6 @@ async function handleSubmit(event) {
   setStatus("Processing PDF...", "neutral");
 
   try {
-    if (controls.screenshot.checked) createScreenshotCode(options.screenshotText);
     let inputBytes = await state.file.arrayBuffer();
     const kind = fileKind(state.file);
     let conversionWarnings = [];
@@ -303,7 +279,6 @@ function initialize() {
   });
 
   const syncPreviewControls = () => {
-    controls.screenshotStrength.disabled = !controls.screenshot.checked;
     controls.visiblePanel.disabled = !controls.visible.checked;
     controls.invisibleSameText.disabled = !controls.invisible.checked;
     if (controls.invisibleSameText.checked) {
@@ -326,8 +301,6 @@ function initialize() {
   };
 
   [
-    controls.screenshot,
-    controls.screenshotStrength,
     controls.visible,
     controls.invisible,
     controls.invisibleSameText,
@@ -353,46 +326,3 @@ function initialize() {
 }
 
 initialize();
-
-const readButton = document.querySelector('#read-screenshot');
-const readerStatus = document.querySelector('#reader-status');
-readButton.addEventListener('click', async () => {
-  const file = document.querySelector('#screenshot-file').files[0];
-  if (!file) { readerStatus.textContent = 'Choose a PNG or JPEG screenshot first.'; return; }
-  if (file.size > 25 * 1024 * 1024) { readerStatus.textContent = 'Choose an image smaller than 25 MB.'; return; }
-  readButton.disabled = true;
-  readerStatus.textContent = 'Inspecting screenshot…';
-  let worker;
-  let timeout;
-  let bitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-    if (bitmap.width * bitmap.height > 40_000_000) throw new Error('Image is too large. Crop to the page first.');
-    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    worker = new Worker(new URL('./screenshot-reader.worker.js', import.meta.url), { type: 'module' });
-    const result = await new Promise((resolve, reject) => {
-      timeout = setTimeout(() => reject(new Error('Scan timed out. Crop to one complete pattern and try again.')), 30000);
-      worker.onmessage = ({ data }) => data.error ? reject(new Error(data.error)) : resolve(data.texts);
-      worker.onerror = () => reject(new Error('Could not start the screenshot reader.'));
-      worker.postMessage({ data: image.data, width: image.width, height: image.height }, [image.data.buffer]);
-    });
-    readerStatus.textContent = result.length
-      ? `Recovered watermark: ${result[0]}`
-      : 'No readable watermark found. Try a larger screenshot or crop around one complete pattern. This does not prove a watermark is absent.';
-  } catch (error) {
-    readerStatus.textContent = error.message || 'Could not read this image.';
-  } finally {
-    clearTimeout(timeout);
-    worker?.terminate();
-    bitmap?.close();
-    readButton.disabled = false;
-  }
-});

@@ -384,7 +384,4 @@ h1 {
   }
 }
 
-.screenshot-reader { width: 100%; max-width: 520px; align-self: start; overflow-wrap: anywhere; }
-.screenshot-reader h2 { margin: 0; font-size: 17px; }
-.screenshot-reader input { max-width: 100%; }
 .preview-panel { gap: 24px; align-content: start; }
